@@ -9,13 +9,15 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.49.4",
     "eslint": "^9.26.0",
     "eslint-config-next": "^15.3.2",
     "next": "15.3.2",
     "prettier": "^3.5.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "supabase": "^2.22.12"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
