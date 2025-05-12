@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '../lib/supabase';
+import { createBrowserClient } from '../lib/supabase-browser';
 import LogoutButton from '../components/LogoutButton';
 
 export default function Dashboard() {

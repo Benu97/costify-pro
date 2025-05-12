@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
+import type { Database } from './app/lib/database.types';
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next();
-  const supabase = createMiddlewareClient({ req: request, res: response });
+  const supabase = createMiddlewareClient<Database>({ req: request, res: response });
   
   // Refresh session if expired
   await supabase.auth.getSession();
