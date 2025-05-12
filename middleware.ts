@@ -16,10 +16,11 @@ export async function middleware(request: NextRequest) {
 
   // Check auth status for protected routes
   const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard');
+  const isHomePage = request.nextUrl.pathname === '/';
   const isLoginPage = request.nextUrl.pathname.startsWith('/login');
   
-  // If accessing a protected route without being authenticated
-  if (isProtectedRoute && !user) {
+  // If accessing a protected route or home page without being authenticated
+  if ((isProtectedRoute || isHomePage) && !user) {
     const redirectUrl = new URL('/login', request.url);
     return NextResponse.redirect(redirectUrl);
   }
@@ -35,5 +36,5 @@ export async function middleware(request: NextRequest) {
 
 // Add the paths that should be checked by the middleware
 export const config = {
-  matcher: ['/dashboard/:path*', '/login'],
+  matcher: ['/', '/dashboard/:path*', '/login'],
 }; 
