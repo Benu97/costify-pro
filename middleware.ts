@@ -14,20 +14,18 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Check auth status for protected routes
-  const isProtectedRoute = request.nextUrl.pathname.startsWith('/dashboard');
-  const isHomePage = request.nextUrl.pathname === '/';
+  // Check auth status for routes
   const isLoginPage = request.nextUrl.pathname.startsWith('/login');
   
-  // If accessing a protected route or home page without being authenticated
-  if ((isProtectedRoute || isHomePage) && !user) {
-    const redirectUrl = new URL('/login', request.url);
+  // If accessing login page while authenticated, redirect to home
+  if (isLoginPage && user) {
+    const redirectUrl = new URL('/', request.url);
     return NextResponse.redirect(redirectUrl);
   }
   
-  // If accessing login page while authenticated
-  if (isLoginPage && user) {
-    const redirectUrl = new URL('/dashboard', request.url);
+  // If unauthenticated, only allow access to login page
+  if (!user && !isLoginPage) {
+    const redirectUrl = new URL('/login', request.url);
     return NextResponse.redirect(redirectUrl);
   }
   
@@ -36,5 +34,5 @@ export async function middleware(request: NextRequest) {
 
 // Add the paths that should be checked by the middleware
 export const config = {
-  matcher: ['/', '/dashboard/:path*', '/login'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 }; 
