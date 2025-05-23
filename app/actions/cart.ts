@@ -1,0 +1,248 @@
+'use server';
+
+import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
+import { createServerClient } from '../lib/supabase-server';
+import { supabaseAdmin, withAuth } from '../lib/supabase';
+import { Cart, CartItem } from '../lib/pricing';
+
+// Validation schemas
+export const cartItemSchema = z.object({
+  id: z.string().optional(),
+  cart_id: z.string(),
+  item_type: z.enum(['meal', 'packet']),
+  item_id: z.string(),
+  markup_pct: z.coerce.number().min(0).default(0),
+});
+
+export type CartItemFormValues = z.infer<typeof cartItemSchema>;
+
+// Get current draft cart or create one if none exists
+export const getCurrentDraftCart = withAuth(async () => {
+  const supabase = createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+
+  // Check for existing draft cart
+  const { data: existingCarts, error: fetchError } = await supabaseAdmin
+    .from('carts')
+    .select('*')
+    .eq('owner_id', user.id)
+    .eq('status', 'draft')
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  if (fetchError) {
+    console.error('Error fetching cart:', fetchError);
+    throw new Error('Failed to fetch cart');
+  }
+
+  // If draft cart exists, return it
+  if (existingCarts && existingCarts.length > 0) {
+    return existingCarts[0] as Cart;
+  }
+
+  // Otherwise create a new draft cart
+  const { data: newCart, error: createError } = await supabaseAdmin
+    .from('carts')
+    .insert({
+      owner_id: user.id,
+      status: 'draft'
+    })
+    .select()
+    .single();
+
+  if (createError) {
+    console.error('Error creating cart:', createError);
+    throw new Error('Failed to create cart');
+  }
+
+  return newCart as Cart;
+});
+
+// Get cart items with details
+export const getCartItems = withAuth(async (cartId: string) => {
+  const { data: cartItems, error: itemsError } = await supabaseAdmin
+    .from('cart_items')
+    .select('*')
+    .eq('cart_id', cartId)
+    .order('created_at');
+
+  if (itemsError) {
+    console.error('Error fetching cart items:', itemsError);
+    throw new Error('Failed to fetch cart items');
+  }
+
+  // Get details for each item
+  const enhancedItems = await Promise.all(
+    cartItems.map(async (item) => {
+      if (item.item_type === 'meal') {
+        const { data: meal } = await supabaseAdmin
+          .from('meals')
+          .select('*, meal_ingredients(*, ingredients(*))')
+          .eq('id', item.item_id)
+          .single();
+        
+        return {
+          ...item,
+          details: meal
+        };
+      } else {
+        const { data: packet } = await supabaseAdmin
+          .from('packets')
+          .select('*, packet_meals(*, meals(*, meal_ingredients(*, ingredients(*))))')
+          .eq('id', item.item_id)
+          .single();
+        
+        return {
+          ...item,
+          details: packet
+        };
+      }
+    })
+  );
+
+  return enhancedItems;
+});
+
+// Add an item to cart
+export const addItemToCart = withAuth(async (formData: CartItemFormValues) => {
+  const validated = cartItemSchema.parse(formData);
+  
+  const { data, error } = await supabaseAdmin
+    .from('cart_items')
+    .insert({
+      cart_id: validated.cart_id,
+      item_type: validated.item_type,
+      item_id: validated.item_id,
+      markup_pct: validated.markup_pct,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding item to cart:', error);
+    throw new Error(`Failed to add item to cart: ${error.message}`);
+  }
+
+  revalidatePath('/cart');
+  return { success: true, data };
+});
+
+// Update cart item
+export const updateCartItem = withAuth(async (formData: CartItemFormValues) => {
+  if (!formData.id) {
+    throw new Error('Cart item ID is required for updates');
+  }
+
+  const validated = cartItemSchema.parse(formData);
+  
+  const { data, error } = await supabaseAdmin
+    .from('cart_items')
+    .update({
+      markup_pct: validated.markup_pct,
+    })
+    .eq('id', validated.id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating cart item:', error);
+    throw new Error(`Failed to update cart item: ${error.message}`);
+  }
+
+  revalidatePath('/cart');
+  return { success: true, data };
+});
+
+// Remove item from cart
+export const removeCartItem = withAuth(async (id: string) => {
+  const { error } = await supabaseAdmin
+    .from('cart_items')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error removing cart item:', error);
+    throw new Error(`Failed to remove cart item: ${error.message}`);
+  }
+
+  revalidatePath('/cart');
+  return { success: true };
+});
+
+// Finalize cart and create a new draft
+export const finalizeCart = withAuth(async (cartId: string) => {
+  const supabase = createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+  
+  // Update cart status to final
+  const { error: updateError } = await supabaseAdmin
+    .from('carts')
+    .update({ status: 'final' })
+    .eq('id', cartId);
+
+  if (updateError) {
+    console.error('Error finalizing cart:', updateError);
+    throw new Error(`Failed to finalize cart: ${updateError.message}`);
+  }
+
+  // Create a new draft cart
+  const { data: newCart, error: createError } = await supabaseAdmin
+    .from('carts')
+    .insert({
+      owner_id: user.id,
+      status: 'draft'
+    })
+    .select()
+    .single();
+
+  if (createError) {
+    console.error('Error creating new draft cart:', createError);
+    throw new Error('Failed to create new draft cart');
+  }
+
+  revalidatePath('/cart');
+  return { success: true, newCartId: newCart.id };
+});
+
+// Search meals and packets for adding to cart
+export const searchItems = withAuth(async (query: string) => {
+  const supabase = createServerClient();
+  
+  // Search meals
+  const { data: meals, error: mealsError } = await supabase
+    .from('meals')
+    .select('id, name, description')
+    .ilike('name', `%${query}%`)
+    .order('name')
+    .limit(5);
+
+  if (mealsError) {
+    console.error('Error searching meals:', mealsError);
+  }
+
+  // Search packets
+  const { data: packets, error: packetsError } = await supabase
+    .from('packets')
+    .select('id, name, description')
+    .ilike('name', `%${query}%`)
+    .order('name')
+    .limit(5);
+
+  if (packetsError) {
+    console.error('Error searching packets:', packetsError);
+  }
+
+  return {
+    meals: meals || [],
+    packets: packets || []
+  };
+});
