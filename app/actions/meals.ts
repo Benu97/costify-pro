@@ -1,19 +1,9 @@
 'use server';
 
-import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { createServerClient } from '../lib/supabase-server';
-import { supabaseAdmin, withAuth } from '../lib/supabase';
-
-// Validation schema
-export const mealSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(1, 'Name is required'),
-  description: z.string().optional().nullable(),
-  price_net_override: z.coerce.number().min(0, 'Price must be a positive number').optional().nullable(),
-});
-
-export type MealFormValues = z.infer<typeof mealSchema>;
+import { supabaseAdmin, withAuth } from '../lib/supabase-server-utils';
+import { mealSchema, type MealFormValues } from '../lib/validation-schemas';
 
 // Get all meals for the current user
 export async function getMeals() {

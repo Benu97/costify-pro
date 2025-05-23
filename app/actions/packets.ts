@@ -1,19 +1,9 @@
 'use server';
 
-import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { createServerClient } from '../lib/supabase-server';
-import { supabaseAdmin, withAuth } from '../lib/supabase';
-
-// Validation schema
-export const packetSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(1, 'Name is required'),
-  description: z.string().optional().nullable(),
-  price_net_override: z.coerce.number().min(0, 'Price must be a positive number').optional().nullable(),
-});
-
-export type PacketFormValues = z.infer<typeof packetSchema>;
+import { supabaseAdmin, withAuth } from '../lib/supabase-server-utils';
+import { packetSchema, type PacketFormValues } from '../lib/validation-schemas';
 
 // Get all packets for the current user
 export async function getPackets() {

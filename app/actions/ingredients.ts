@@ -1,19 +1,9 @@
 'use server';
 
-import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { createServerClient } from '../lib/supabase-server';
-import { supabaseAdmin, withAuth } from '../lib/supabase';
-
-// Validation schema
-export const ingredientSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(1, 'Name is required'),
-  unit: z.string().min(1, 'Unit is required'),
-  price_net: z.coerce.number().min(0, 'Price must be a positive number'),
-});
-
-export type IngredientFormValues = z.infer<typeof ingredientSchema>;
+import { supabaseAdmin, withAuth } from '../lib/supabase-server-utils';
+import { ingredientSchema, type IngredientFormValues } from '../lib/validation-schemas';
 
 // Get all ingredients for the current user
 export async function getIngredients() {

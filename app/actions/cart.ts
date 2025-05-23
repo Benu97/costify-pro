@@ -1,21 +1,10 @@
 'use server';
 
-import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { createServerClient } from '../lib/supabase-server';
-import { supabaseAdmin, withAuth } from '../lib/supabase';
+import { supabaseAdmin, withAuth } from '../lib/supabase-server-utils';
 import { Cart, CartItem } from '../lib/pricing';
-
-// Validation schemas
-export const cartItemSchema = z.object({
-  id: z.string().optional(),
-  cart_id: z.string(),
-  item_type: z.enum(['meal', 'packet']),
-  item_id: z.string(),
-  markup_pct: z.coerce.number().min(0).default(0),
-});
-
-export type CartItemFormValues = z.infer<typeof cartItemSchema>;
+import { cartItemSchema, type CartItemFormValues } from '../lib/validation-schemas';
 
 // Get current draft cart or create one if none exists
 export const getCurrentDraftCart = withAuth(async () => {

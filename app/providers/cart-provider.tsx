@@ -67,7 +67,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const items = await getCartItems(currentCart.id);
         
         // Calculate net and gross prices for each item
-        const enhancedItems = items.map(item => {
+        const enhancedItems = items.map((item: CartItem & { details: any }) => {
           // This is simplified - actual calculation would use the pricing utils
           const netPrice = item.details.price_net_override || 0; // Simplified
           const grossPrice = netPrice * (1 + item.markup_pct / 100);
