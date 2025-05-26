@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { PacketFormValues, packetSchema } from '@/app/actions/packets';
+import { PacketFormValues, packetSchema } from '@/app/lib/validation-schemas';
 import { Packet } from '@/app/lib/pricing';
 
 interface PacketFormDialogProps {

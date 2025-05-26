@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { MealFormValues, mealSchema } from '@/app/actions/meals';
+import { MealFormValues, mealSchema } from '@/app/lib/validation-schemas';
 import { Meal } from '@/app/lib/pricing';
 
 interface MealFormDialogProps {

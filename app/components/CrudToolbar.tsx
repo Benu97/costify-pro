@@ -1,7 +1,7 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { PlusIcon, RefreshIcon } from "lucide-react";
+import { PlusIcon, RefreshCw } from "lucide-react";
 import { useState } from "react";
 
 interface CrudToolbarProps {
@@ -29,7 +29,7 @@ export function CrudToolbar({ title, onAddNew, onRefresh }: CrudToolbarProps) {
           onClick={handleRefresh}
           disabled={isRefreshing}
         >
-          <RefreshIcon className="h-4 w-4 mr-2" />
+          <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
         <Button 

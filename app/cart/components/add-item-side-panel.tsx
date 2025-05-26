@@ -87,7 +87,7 @@ export default function AddItemSidePanel({
                   onChange={(e) => setMarkupPct(parseFloat(e.target.value) || 0)}
                 />
                 <p className="text-xs text-muted-foreground">
-                  The markup percentage will be applied to the item's net price.
+                  The markup percentage will be applied to the item&apos;s net price.
                 </p>
               </div>
             </div>

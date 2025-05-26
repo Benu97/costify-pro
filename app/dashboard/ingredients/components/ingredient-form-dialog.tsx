@@ -19,7 +19,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { IngredientFormValues, ingredientSchema } from '@/app/actions/ingredients';
+import { IngredientFormValues, ingredientSchema } from '@/app/lib/validation-schemas';
 import { Ingredient } from '@/app/lib/pricing';
 
 interface IngredientFormDialogProps {
