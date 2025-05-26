@@ -96,3 +96,104 @@ export const deleteMeal = withAuth(async (id: string) => {
   revalidatePath('/dashboard/meals');
   return { success: true };
 });
+
+// Get meal with ingredients
+export async function getMealWithIngredients(mealId: string) {
+  const supabase = createServerClient();
+  
+  const { data: meal, error: mealError } = await supabase
+    .from('meals')
+    .select('*')
+    .eq('id', mealId)
+    .single();
+
+  if (mealError) {
+    console.error('Error fetching meal:', mealError.message);
+    throw new Error('Failed to fetch meal');
+  }
+
+  const { data: mealIngredients, error: ingredientsError } = await supabase
+    .from('meal_ingredients')
+    .select(`
+      ingredient_id,
+      quantity,
+      ingredients (
+        id,
+        name,
+        unit,
+        price_net,
+        category
+      )
+    `)
+    .eq('meal_id', mealId);
+
+  if (ingredientsError) {
+    console.error('Error fetching meal ingredients:', ingredientsError.message);
+    throw new Error('Failed to fetch meal ingredients');
+  }
+
+  return {
+    ...meal,
+    ingredients: mealIngredients.map(mi => ({
+      ...(mi.ingredients as any),
+      quantity: mi.quantity
+    }))
+  };
+}
+
+// Add ingredient to meal
+export const addMealIngredient = withAuth(async (mealId: string, ingredientId: string, quantity: number) => {
+  const { data, error } = await supabaseAdmin
+    .from('meal_ingredients')
+    .insert({
+      meal_id: mealId,
+      ingredient_id: ingredientId,
+      quantity: quantity
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding meal ingredient:', error.message);
+    throw new Error(`Failed to add ingredient to meal: ${error.message}`);
+  }
+
+  revalidatePath('/dashboard/meals');
+  return { success: true, data };
+});
+
+// Update meal ingredient quantity
+export const updateMealIngredient = withAuth(async (mealId: string, ingredientId: string, quantity: number) => {
+  const { data, error } = await supabaseAdmin
+    .from('meal_ingredients')
+    .update({ quantity })
+    .eq('meal_id', mealId)
+    .eq('ingredient_id', ingredientId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating meal ingredient:', error.message);
+    throw new Error(`Failed to update ingredient quantity: ${error.message}`);
+  }
+
+  revalidatePath('/dashboard/meals');
+  return { success: true, data };
+});
+
+// Remove ingredient from meal
+export const removeMealIngredient = withAuth(async (mealId: string, ingredientId: string) => {
+  const { error } = await supabaseAdmin
+    .from('meal_ingredients')
+    .delete()
+    .eq('meal_id', mealId)
+    .eq('ingredient_id', ingredientId);
+
+  if (error) {
+    console.error('Error removing meal ingredient:', error.message);
+    throw new Error(`Failed to remove ingredient from meal: ${error.message}`);
+  }
+
+  revalidatePath('/dashboard/meals');
+  return { success: true };
+});

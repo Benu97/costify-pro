@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useCart } from '@/app/providers/cart-provider';
+import { generateCartPDF, CartItemForPDF, CartSummaryForPDF } from '@/app/lib/pdf-export';
+import { SaveQuoteDialog } from './save-quote-dialog';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +36,7 @@ export default function CartSidebar() {
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editMarkup, setEditMarkup] = useState<number>(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isSaveQuoteDialogOpen, setIsSaveQuoteDialogOpen] = useState(false);
 
   const handleEditMarkup = (itemId: string, currentMarkup: number) => {
     setEditingItemId(itemId);
@@ -57,9 +60,50 @@ export default function CartSidebar() {
     setEditMarkup(0);
   };
 
-  const handleFinalizeCart = async () => {
-    if (window.confirm('Are you sure you want to finalize this cart? This action cannot be undone.')) {
-      await finalizeCurrentCart();
+  const handleFinalizeCart = () => {
+    setIsSaveQuoteDialogOpen(true);
+  };
+
+  const handleSaveQuote = async (quoteName: string, notes: string) => {
+    // For now, just finalize the cart - in the future this would save to a quotes table
+    await finalizeCurrentCart();
+    // TODO: Implement quote saving to database with quoteName and notes
+  };
+
+  const handleExportPDF = () => {
+    try {
+      // Convert cart items to PDF format
+      const pdfItems: CartItemForPDF[] = cartItems.map(item => ({
+        id: item.id,
+        name: item.details?.name || 'Unknown Item',
+        description: item.details?.description,
+        type: item.item_type as 'meal' | 'packet',
+        quantity: 1, // Cart items don't have quantity - each row is one item
+        basePrice: item.netPrice / (1 + item.markup_pct / 100), // Calculate base price from net price
+        markupPct: item.markup_pct,
+        netPrice: item.netPrice,
+        grossPrice: item.grossPrice
+      }));
+
+      // Convert cart summary to PDF format
+      const pdfSummary: CartSummaryForPDF = {
+        nettoTotal: cartSummary.nettoTotal,
+        avgMarkupPct: cartSummary.avgMarkupPct,
+        bruttoTotal: cartSummary.bruttoTotal,
+        itemCount: cartItems.length
+      };
+
+      // Generate and download PDF
+      generateCartPDF(pdfItems, pdfSummary);
+      
+      toast.success('PDF exported successfully', {
+        description: 'Your quote has been downloaded'
+      });
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
+      toast.error('Failed to export PDF', {
+        description: 'Please try again'
+      });
     }
   };
 
@@ -333,10 +377,16 @@ export default function CartSidebar() {
                 <div className="space-y-2">
                   <Button className="w-full" onClick={handleFinalizeCart} disabled={isLoading}>
                     <Receipt className="h-4 w-4 mr-2" />
-                    Finalize Cart
+                    Save Quote
                   </Button>
                   
-                  <Button variant="outline" className="w-full" size="sm">
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    size="sm"
+                    onClick={handleExportPDF}
+                    disabled={isLoading}
+                  >
                     <Download className="h-4 w-4 mr-2" />
                     Export PDF
                   </Button>
@@ -346,6 +396,14 @@ export default function CartSidebar() {
           </>
         )}
       </div>
+      
+      <SaveQuoteDialog
+        open={isSaveQuoteDialogOpen}
+        onOpenChange={setIsSaveQuoteDialogOpen}
+        cartSummary={cartSummary}
+        itemCount={cartItems.length}
+        onSaveQuote={handleSaveQuote}
+      />
     </motion.aside>
   );
 } 

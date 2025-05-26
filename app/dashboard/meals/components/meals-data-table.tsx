@@ -10,14 +10,26 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Pencil, Trash2 } from 'lucide-react';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { MoreHorizontal, Pencil, Trash2, Eye, Copy, ShoppingCart } from 'lucide-react';
 import { CrudToolbar } from '@/app/components/CrudToolbar';
 import { Meal } from '@/app/lib/pricing';
 import { MealFormValues } from '@/app/lib/validation-schemas';
 import { createMeal, deleteMeal, updateMeal } from '@/app/actions/meals';
 import { MealFormDialog } from './meal-form-dialog';
+import { MealDetailsDialog } from './meal-details-dialog';
+import { AddToCartDialog } from './add-to-cart-dialog';
 import { ConfirmDeleteDialog } from '@/app/dashboard/ingredients/components/confirm-delete-dialog';
+import { FavoriteButton } from '@/app/components/favorite-button';
+import { calculateMealPrice, formatPrice } from '@/app/lib/price-utils';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface MealsDataTableProps {
   initialMeals: Meal[];
@@ -28,7 +40,9 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
   const [meals, setMeals] = useState<Meal[]>(initialMeals);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isCartDialogOpen, setIsCartDialogOpen] = useState(false);
   const [currentMeal, setCurrentMeal] = useState<Meal | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -50,6 +64,48 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
     setIsDeleteDialogOpen(true);
   };
 
+  const handleViewDetails = (meal: Meal) => {
+    setCurrentMeal(meal);
+    setIsDetailsDialogOpen(true);
+  };
+
+  const handleAddToCart = (meal: Meal) => {
+    setCurrentMeal(meal);
+    setIsCartDialogOpen(true);
+  };
+
+  const handleCartSubmit = async (meal: Meal, quantity: number, markupPercentage: number) => {
+    // TODO: Implement actual cart functionality
+    console.log('Adding to cart:', { meal: meal.name, quantity, markupPercentage });
+    // This should integrate with your cart context/state management
+  };
+
+  const handleDuplicate = async (meal: Meal) => {
+    const duplicateData: MealFormValues = {
+      name: `${meal.name} (Copy)`,
+      description: meal.description,
+      price_net_override: meal.price_net_override,
+    };
+    
+    setIsSubmitting(true);
+    try {
+      const result = await createMeal(duplicateData);
+      if (result.success && result.data) {
+        setMeals([...meals, result.data as Meal]);
+        toast.success('Meal duplicated successfully', {
+          description: `${duplicateData.name} has been created`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to duplicate meal:', error);
+      toast.error('Failed to duplicate meal', {
+        description: 'Please try again'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const handleCreateMeal = async (data: MealFormValues) => {
     setIsSubmitting(true);
     try {
@@ -57,9 +113,15 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
       if (result.success && result.data) {
         setMeals([...meals, result.data as Meal]);
         setIsAddDialogOpen(false);
+        toast.success('Meal created successfully', {
+          description: `${data.name} has been added to your menu`
+        });
       }
     } catch (error) {
       console.error('Failed to create meal:', error);
+      toast.error('Failed to create meal', {
+        description: 'Please try again or check your input'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -78,9 +140,15 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
           )
         );
         setIsEditDialogOpen(false);
+        toast.success('Meal updated successfully', {
+          description: `${data.name} has been updated`
+        });
       }
     } catch (error) {
       console.error('Failed to update meal:', error);
+      toast.error('Failed to update meal', {
+        description: 'Please try again or check your input'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -97,9 +165,15 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
           meals.filter((item) => item.id !== currentMeal.id)
         );
         setIsDeleteDialogOpen(false);
+        toast.success('Meal deleted successfully', {
+          description: `${currentMeal.name} has been removed from your menu`
+        });
       }
     } catch (error) {
       console.error('Failed to delete meal:', error);
+      toast.error('Failed to delete meal', {
+        description: 'Please try again'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -119,8 +193,8 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Description</TableHead>
-              <TableHead className="text-right">Price Override (€)</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead className="text-right">Base Price (€)</TableHead>
+              <TableHead className="w-[140px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -136,27 +210,56 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
                   <TableCell>{meal.name}</TableCell>
                   <TableCell>{meal.description || '-'}</TableCell>
                   <TableCell className="text-right">
-                    {meal.price_net_override 
-                      ? parseFloat(meal.price_net_override.toString()).toFixed(2) 
-                      : '-'}
+                    {formatPrice(calculateMealPrice(meal))}
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="ghost"
+                    <div className="flex justify-end gap-1">
+                      <FavoriteButton
+                        id={meal.id}
+                        type="meal"
+                        name={meal.name}
                         size="icon"
-                        onClick={() => handleEdit(meal)}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                        className="h-8 w-8"
+                      />
                       <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(meal)}
-                        className="text-destructive"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAddToCart(meal)}
+                        className="h-8"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <ShoppingCart className="h-4 w-4 mr-1" />
+                        Add
                       </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">More options</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem onClick={() => handleViewDetails(meal)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleEdit(meal)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Edit meal
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicate(meal)}>
+                            <Copy className="h-4 w-4 mr-2" />
+                            Duplicate meal
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleDelete(meal)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete meal
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -185,6 +288,15 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
             title="Edit Meal"
           />
 
+          <MealDetailsDialog
+            open={isDetailsDialogOpen}
+            onOpenChange={setIsDetailsDialogOpen}
+            mealId={currentMeal.id}
+            onMealUpdated={(updatedMeal) => {
+              setMeals(meals.map(m => m.id === updatedMeal.id ? updatedMeal : m));
+            }}
+          />
+
           <ConfirmDeleteDialog
             open={isDeleteDialogOpen}
             onOpenChange={setIsDeleteDialogOpen}
@@ -192,6 +304,13 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
             isSubmitting={isSubmitting}
             itemName={currentMeal.name}
             itemType="meal"
+          />
+
+          <AddToCartDialog
+            open={isCartDialogOpen}
+            onOpenChange={setIsCartDialogOpen}
+            meal={currentMeal}
+            onAddToCart={handleCartSubmit}
           />
         </>
       )}

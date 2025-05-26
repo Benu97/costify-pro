@@ -6,6 +6,7 @@ export const ingredientSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   unit: z.string().min(1, 'Unit is required'),
   price_net: z.coerce.number().min(0, 'Price must be a positive number'),
+  category: z.string().optional(),
 });
 
 export type IngredientFormValues = z.infer<typeof ingredientSchema>;

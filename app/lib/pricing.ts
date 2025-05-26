@@ -11,7 +11,9 @@ export type Ingredient = {
   name: string;
   unit: string;
   price_net: number;
+  category?: string;
   created_at: string;
+  updated_at: string;
   owner_id: string;
 };
 

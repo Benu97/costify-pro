@@ -96,3 +96,103 @@ export const deletePacket = withAuth(async (id: string) => {
   revalidatePath('/dashboard/packets');
   return { success: true };
 });
+
+// Get packet with meals
+export async function getPacketWithMeals(packetId: string) {
+  const supabase = createServerClient();
+  
+  const { data: packet, error: packetError } = await supabase
+    .from('packets')
+    .select('*')
+    .eq('id', packetId)
+    .single();
+
+  if (packetError) {
+    console.error('Error fetching packet:', packetError.message);
+    throw new Error('Failed to fetch packet');
+  }
+
+  const { data: packetMeals, error: mealsError } = await supabase
+    .from('packet_meals')
+    .select(`
+      meal_id,
+      quantity,
+      meals (
+        id,
+        name,
+        description,
+        price_net_override
+      )
+    `)
+    .eq('packet_id', packetId);
+
+  if (mealsError) {
+    console.error('Error fetching packet meals:', mealsError.message);
+    throw new Error('Failed to fetch packet meals');
+  }
+
+  return {
+    ...packet,
+    meals: packetMeals.map(pm => ({
+      ...(pm.meals as any),
+      quantity: pm.quantity
+    }))
+  };
+}
+
+// Add meal to packet
+export const addPacketMeal = withAuth(async (packetId: string, mealId: string, quantity: number) => {
+  const { data, error } = await supabaseAdmin
+    .from('packet_meals')
+    .insert({
+      packet_id: packetId,
+      meal_id: mealId,
+      quantity: quantity
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding meal to packet:', error.message);
+    throw new Error(`Failed to add meal to packet: ${error.message}`);
+  }
+
+  revalidatePath('/dashboard/packets');
+  return { success: true, data };
+});
+
+// Update packet meal quantity
+export const updatePacketMeal = withAuth(async (packetId: string, mealId: string, quantity: number) => {
+  const { data, error } = await supabaseAdmin
+    .from('packet_meals')
+    .update({ quantity })
+    .eq('packet_id', packetId)
+    .eq('meal_id', mealId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating packet meal:', error.message);
+    throw new Error(`Failed to update meal quantity: ${error.message}`);
+  }
+
+  revalidatePath('/dashboard/packets');
+  return { success: true, data };
+});
+
+// Remove meal from packet
+export const removePacketMeal = withAuth(async (packetId: string, mealId: string) => {
+  const { error } = await supabaseAdmin
+    .from('packet_meals')
+    .delete()
+    .eq('packet_id', packetId)
+    .eq('meal_id', mealId);
+
+  if (error) {
+    console.error('Error removing meal from packet:', error.message);
+    throw new Error(`Failed to remove meal from packet: ${error.message}`);
+  }
+
+  revalidatePath('/dashboard/packets');
+  return { success: true };
+});

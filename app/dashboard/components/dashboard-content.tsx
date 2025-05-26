@@ -73,7 +73,7 @@ export default function DashboardContent({ userEmail, stats }: DashboardContentP
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">Costify Pro</h1>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Costify Pro</h1>
               <p className="text-sm text-muted-foreground">Food Costing & Catering Management</p>
             </div>
             <div className="flex items-center gap-4">
@@ -102,13 +102,13 @@ export default function DashboardContent({ userEmail, stats }: DashboardContentP
 
         {/* Quick Stats */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
-          <Card>
+          <Card className="transition-all hover:shadow-lg hover:scale-[1.02] group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Items</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <TrendingUp className="h-4 w-4 text-muted-foreground group-hover:text-blue-600 transition-colors" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                 {stats.ingredients + stats.meals + stats.packets}
               </div>
               <p className="text-xs text-muted-foreground">
@@ -117,39 +117,39 @@ export default function DashboardContent({ userEmail, stats }: DashboardContentP
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="transition-all hover:shadow-lg hover:scale-[1.02] group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Ingredients</CardTitle>
-              <Wheat className="h-4 w-4 text-muted-foreground" />
+              <Wheat className="h-4 w-4 text-muted-foreground group-hover:text-green-600 transition-colors" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.ingredients}</div>
+              <div className="text-3xl font-bold text-green-600">{stats.ingredients}</div>
               <p className="text-xs text-muted-foreground">
                 Raw materials in system
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="transition-all hover:shadow-lg hover:scale-[1.02] group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Meals</CardTitle>
-              <Utensils className="h-4 w-4 text-muted-foreground" />
+              <Utensils className="h-4 w-4 text-muted-foreground group-hover:text-blue-600 transition-colors" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.meals}</div>
+              <div className="text-3xl font-bold text-blue-600">{stats.meals}</div>
               <p className="text-xs text-muted-foreground">
                 Dishes configured
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="transition-all hover:shadow-lg hover:scale-[1.02] group">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Catering Packets</CardTitle>
-              <Package className="h-4 w-4 text-muted-foreground" />
+              <Package className="h-4 w-4 text-muted-foreground group-hover:text-purple-600 transition-colors" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.packets}</div>
+              <div className="text-3xl font-bold text-purple-600">{stats.packets}</div>
               <p className="text-xs text-muted-foreground">
                 Bundled packages
               </p>
@@ -161,13 +161,13 @@ export default function DashboardContent({ userEmail, stats }: DashboardContentP
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {navigationCards.map((card) => (
             <Link key={card.href} href={card.href}>
-              <Card className="h-full transition-all hover:shadow-lg hover:scale-[1.02] cursor-pointer">
+              <Card className="h-full transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-primary/50 cursor-pointer group">
                 <CardHeader>
-                  <div className={`w-12 h-12 rounded-lg ${card.bgColor} flex items-center justify-center mb-4`}>
-                    <card.icon className={`h-6 w-6 ${card.color}`} />
+                  <div className={`w-14 h-14 rounded-lg ${card.bgColor} flex items-center justify-center mb-4 transition-all group-hover:scale-110`}>
+                    <card.icon className={`h-7 w-7 ${card.color} transition-all group-hover:scale-110`} />
                   </div>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{card.title}</CardTitle>
+                    <CardTitle className="text-xl group-hover:text-primary transition-colors">{card.title}</CardTitle>
                     {card.count !== null && (
                       <span className="text-2xl font-bold text-muted-foreground">
                         {card.count}
@@ -188,30 +188,37 @@ export default function DashboardContent({ userEmail, stats }: DashboardContentP
               <CardTitle>Quick Actions</CardTitle>
               <CardDescription>Common tasks to get you started</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-wrap gap-2">
+            <CardContent className="flex flex-wrap gap-3">
               <Button 
                 variant="outline" 
-                size="sm"
+                size="default"
+                className="h-11"
                 onClick={() => router.push('/dashboard/ingredients')}
               >
+                <Wheat className="h-4 w-4 mr-2" />
                 Add New Ingredient
               </Button>
               <Button 
                 variant="outline" 
-                size="sm"
+                size="default"
+                className="h-11"
                 onClick={() => router.push('/dashboard/meals')}
               >
+                <Utensils className="h-4 w-4 mr-2" />
                 Create New Meal
               </Button>
               <Button 
                 variant="outline" 
-                size="sm"
+                size="default"
+                className="h-11"
                 onClick={() => router.push('/dashboard/packets')}
               >
+                <Package className="h-4 w-4 mr-2" />
                 Build New Packet
               </Button>
               <Button 
-                size="sm"
+                size="default"
+                className="h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 onClick={() => router.push('/cart')}
               >
                 <ShoppingCart className="h-4 w-4 mr-2" />

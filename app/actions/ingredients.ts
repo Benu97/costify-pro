@@ -39,6 +39,7 @@ export const createIngredient = withAuth(async (formData: IngredientFormValues) 
       name: validated.name,
       unit: validated.unit,
       price_net: validated.price_net,
+      category: validated.category,
       owner_id: user.id
     })
     .select()
@@ -67,6 +68,7 @@ export const updateIngredient = withAuth(async (formData: IngredientFormValues) 
       name: validated.name,
       unit: validated.unit,
       price_net: validated.price_net,
+      category: validated.category,
     })
     .eq('id', formData.id)
     .select()
