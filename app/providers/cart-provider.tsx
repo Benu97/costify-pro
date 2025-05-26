@@ -42,9 +42,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<DetailedCartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Calculate cart summary using our pricing utility
+  // Calculate cart summary using a safe approach
   const cartSummary = useMemo(() => {
-    if (!cartItems.length) {
+    if (!cartItems || !cartItems.length) {
       return {
         nettoTotal: 0,
         bruttoTotal: 0,
@@ -52,8 +52,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       };
     }
     
-    // This is a simplified version as our actual CartItem type might differ
-    return calcCartSummary(cartItems as any);
+    // Safe calculation without using the complex calcCartSummary for now
+    let nettoTotal = 0;
+    let bruttoTotal = 0;
+    let weightedMarkupSum = 0;
+    
+    cartItems.forEach(item => {
+      const itemNet = item.netPrice || 0;
+      const itemGross = item.grossPrice || itemNet * (1 + item.markup_pct / 100);
+      
+      nettoTotal += itemNet;
+      bruttoTotal += itemGross;
+      weightedMarkupSum += item.markup_pct * itemNet;
+    });
+    
+    const avgMarkupPct = nettoTotal > 0 ? weightedMarkupSum / nettoTotal : 0;
+    
+    return {
+      nettoTotal,
+      bruttoTotal,
+      avgMarkupPct
+    };
   }, [cartItems]);
 
   // Load the current draft cart
@@ -67,22 +86,27 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         const items = await getCartItems(currentCart.id);
         
         // Calculate net and gross prices for each item
-        const enhancedItems = items.map((item: any) => {
+        const enhancedItems = (items || []).map((item: any) => {
           // This is simplified - actual calculation would use the pricing utils
-          const netPrice = item.details?.price_net_override || 0; // Simplified
-          const grossPrice = netPrice * (1 + item.markup_pct / 100);
+          const netPrice = item.details?.price_net_override || 10; // Default price for demo
+          const grossPrice = netPrice * (1 + (item.markup_pct || 0) / 100);
           
           return {
             ...item,
             netPrice,
-            grossPrice
+            grossPrice,
+            markup_pct: item.markup_pct || 0
           } as DetailedCartItem;
         });
         
         setCartItems(enhancedItems);
+      } else {
+        setCartItems([]);
       }
     } catch (error) {
       console.error('Error loading cart:', error);
+      setCartItems([]);
+      setCart(null);
     } finally {
       setIsLoading(false);
     }

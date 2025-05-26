@@ -69,27 +69,33 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
   const [isSearching, setIsSearching] = useState(false);
   const { cart, cartItems, addItem } = useCart();
 
-  const filteredIngredients = ingredients.filter(item => 
+  // Safety check to prevent undefined errors
+  const safeCartItems = cartItems || [];
+  const safeIngredients = ingredients || [];
+  const safeMeals = meals || [];
+  const safePackets = packets || [];
+
+  const filteredIngredients = safeIngredients.filter(item => 
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.unit.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredMeals = meals.filter(item => 
+  const filteredMeals = safeMeals.filter(item => 
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const filteredPackets = packets.filter(item => 
+  const filteredPackets = safePackets.filter(item => 
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const stats = {
-    totalItems: ingredients.length + meals.length + packets.length,
-    ingredients: ingredients.length,
-    meals: meals.length,
-    packets: packets.length,
-    cartItems: cartItems.length
+    totalItems: safeIngredients.length + safeMeals.length + safePackets.length,
+    ingredients: safeIngredients.length,
+    meals: safeMeals.length,
+    packets: safePackets.length,
+    cartItems: safeCartItems.length
   };
 
   const handleAddToCart = async (item: Meal | Packet, type: 'meal' | 'packet') => {
