@@ -129,12 +129,13 @@ export const updateCartItem = withAuth(async (formData: CartItemFormValues) => {
 
   const validated = cartItemSchema.parse(formData);
   
+  // TypeScript fix: Use formData.id directly since we already checked it exists
   const { data, error } = await supabaseAdmin
     .from('cart_items')
     .update({
       markup_pct: validated.markup_pct,
     })
-    .eq('id', validated.id)
+    .eq('id', formData.id)
     .select()
     .single();
 

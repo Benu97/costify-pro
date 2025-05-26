@@ -25,14 +25,21 @@ export async function getIngredients() {
 export const createIngredient = withAuth(async (formData: IngredientFormValues) => {
   const validated = ingredientSchema.parse(formData);
   
+  // Get authenticated user (withAuth ensures user exists)
+  const supabase = createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+  
   const { data, error } = await supabaseAdmin
     .from('ingredients')
     .insert({
       name: validated.name,
       unit: validated.unit,
       price_net: validated.price_net,
-      // The service role bypasses RLS, but we still need to set owner_id
-      owner_id: (await createServerClient().auth.getUser()).data.user?.id
+      owner_id: user.id
     })
     .select()
     .single();
@@ -61,7 +68,7 @@ export const updateIngredient = withAuth(async (formData: IngredientFormValues) 
       unit: validated.unit,
       price_net: validated.price_net,
     })
-    .eq('id', validated.id)
+    .eq('id', formData.id)
     .select()
     .single();
 

@@ -25,13 +25,21 @@ export async function getPackets() {
 export const createPacket = withAuth(async (formData: PacketFormValues) => {
   const validated = packetSchema.parse(formData);
   
+  // Get authenticated user (withAuth ensures user exists)
+  const supabase = createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+  
   const { data, error } = await supabaseAdmin
     .from('packets')
     .insert({
       name: validated.name,
       description: validated.description,
       price_net_override: validated.price_net_override,
-      owner_id: (await createServerClient().auth.getUser()).data.user?.id
+      owner_id: user.id
     })
     .select()
     .single();
@@ -60,7 +68,7 @@ export const updatePacket = withAuth(async (formData: PacketFormValues) => {
       description: validated.description,
       price_net_override: validated.price_net_override,
     })
-    .eq('id', validated.id)
+    .eq('id', formData.id)
     .select()
     .single();
 

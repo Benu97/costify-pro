@@ -25,13 +25,21 @@ export async function getMeals() {
 export const createMeal = withAuth(async (formData: MealFormValues) => {
   const validated = mealSchema.parse(formData);
   
+  // Get authenticated user (withAuth ensures user exists)
+  const supabase = createServerClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+  
   const { data, error } = await supabaseAdmin
     .from('meals')
     .insert({
       name: validated.name,
       description: validated.description,
       price_net_override: validated.price_net_override,
-      owner_id: (await createServerClient().auth.getUser()).data.user?.id
+      owner_id: user.id
     })
     .select()
     .single();
@@ -60,7 +68,7 @@ export const updateMeal = withAuth(async (formData: MealFormValues) => {
       description: validated.description,
       price_net_override: validated.price_net_override,
     })
-    .eq('id', validated.id)
+    .eq('id', formData.id)
     .select()
     .single();
 
