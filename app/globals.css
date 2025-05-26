@@ -116,7 +116,76 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0.556 0 0 / 50%);
+    border-radius: 3px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.556 0 0 / 70%);
+  }
+  
+  .dark ::-webkit-scrollbar-thumb {
+    background: oklch(0.556 0 0 / 30%);
+  }
+  
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.556 0 0 / 50%);
+  }
+}
+
+@layer utilities {
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+  
+  .gradient-bg {
+    background: linear-gradient(
+      135deg,
+      oklch(1 0 0) 0%,
+      oklch(0.985 0 0) 100%
+    );
+  }
+  
+  .dark .gradient-bg {
+    background: linear-gradient(
+      135deg,
+      oklch(0.145 0 0) 0%,
+      oklch(0.205 0 0) 100%
+    );
+  }
+  
+  .glass-effect {
+    backdrop-filter: blur(12px);
+    background: oklch(1 0 0 / 80%);
+    border: 1px solid oklch(1 0 0 / 20%);
+  }
+  
+  .dark .glass-effect {
+    background: oklch(0.145 0 0 / 80%);
+    border: 1px solid oklch(1 0 0 / 10%);
   }
 }
