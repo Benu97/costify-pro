@@ -1,14 +1,14 @@
 import { Suspense } from 'react';
 import { createServerClient } from '@/app/lib/supabase-server';
 import { redirect } from 'next/navigation';
-import DashboardContent from './dashboard/components/dashboard-content';
-import { getIngredients } from './actions/ingredients';
-import { getMeals } from './actions/meals';
-import { getPackets } from './actions/packets';
+import DashboardContent from './components/dashboard-content';
+import { getIngredients } from '@/app/actions/ingredients';
+import { getMeals } from '@/app/actions/meals';
+import { getPackets } from '@/app/actions/packets';
 
 export const dynamic = 'force-dynamic';
 
-export default async function HomePage() {
+export default async function DashboardPage() {
   const supabase = createServerClient();
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -55,4 +55,4 @@ function DashboardSkeleton() {
       </div>
     </div>
   );
-}
+} 

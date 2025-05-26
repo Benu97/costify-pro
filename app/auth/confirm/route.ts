@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Successfully verified email, redirect to dashboard
-    return NextResponse.redirect(new URL('/dashboard', request.url));
+    return NextResponse.redirect(new URL('/', request.url));
   }
   
   // If no token or type, redirect to home

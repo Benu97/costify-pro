@@ -27,7 +27,7 @@ export default function LoginPage() {
         throw error;
       }
       
-      // Successful login - refresh and redirect to homepage (via middleware)
+      // Successful login - refresh and redirect to dashboard (via middleware)
       router.push('/');
       router.refresh();
     } catch (err: any) {
