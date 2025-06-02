@@ -14,6 +14,10 @@ import { useCart } from '@/app/providers/cart-provider';
 import { searchItems } from '@/app/actions/cart';
 import LogoutButton from '@/app/components/LogoutButton';
 import CartSidebar from '@/app/components/cart-sidebar';
+import { IngredientEditDialog } from '@/app/dashboard/ingredients/components/ingredient-edit-dialog';
+import { IngredientFormDialog } from '@/app/dashboard/ingredients/components/ingredient-form-dialog';
+import { createIngredient, deleteIngredient, updateIngredient } from '@/app/actions/ingredients';
+import { IngredientFormValues } from '@/app/lib/validation-schemas';
 import { 
   Package, 
   ShoppingCart, 
@@ -41,6 +45,7 @@ interface Ingredient {
   created_at: string;
   updated_at: string;
   owner_id: string;
+  category?: string;
 }
 
 interface Meal {
@@ -69,10 +74,17 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const { cart, cartItems, addItem } = useCart();
+  
+  // Ingredient management state
+  const [localIngredients, setLocalIngredients] = useState<Ingredient[]>(ingredients || []);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [currentIngredient, setCurrentIngredient] = useState<Ingredient | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Safety check to prevent undefined errors
   const safeCartItems = cartItems || [];
-  const safeIngredients = ingredients || [];
+  const safeIngredients = localIngredients || [];
   const safeMeals = meals || [];
   const safePackets = packets || [];
 
@@ -110,6 +122,89 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
       toast.error('Failed to add item to cart', {
         description: 'Please try again'
       });
+    }
+  };
+
+  // Ingredient management handlers
+  const handleAddIngredient = () => {
+    setIsAddDialogOpen(true);
+  };
+
+  const handleEditIngredient = (ingredient: Ingredient) => {
+    setCurrentIngredient(ingredient);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleCreateIngredient = async (data: IngredientFormValues) => {
+    setIsSubmitting(true);
+    try {
+      const result = await createIngredient(data);
+      if (result.success && result.data) {
+        setLocalIngredients([...localIngredients, result.data as Ingredient]);
+        setIsAddDialogOpen(false);
+        toast.success('Ingredient created successfully', {
+          description: `${data.name} has been added to your inventory`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create ingredient:', error);
+      toast.error('Failed to create ingredient', {
+        description: 'Please try again or check your input'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUpdateIngredient = async (data: IngredientFormValues) => {
+    if (!data.id) return;
+    
+    setIsSubmitting(true);
+    try {
+      const result = await updateIngredient(data);
+      if (result.success && result.data) {
+        setLocalIngredients(
+          localIngredients.map((item) => 
+            item.id === data.id ? result.data as Ingredient : item
+          )
+        );
+        setIsEditDialogOpen(false);
+        toast.success('Ingredient updated successfully', {
+          description: `${data.name} has been updated`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update ingredient:', error);
+      toast.error('Failed to update ingredient', {
+        description: 'Please try again or check your input'
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteIngredient = async () => {
+    if (!currentIngredient) return;
+    
+    setIsSubmitting(true);
+    try {
+      const result = await deleteIngredient(currentIngredient.id);
+      if (result.success) {
+        setLocalIngredients(
+          localIngredients.filter((item) => item.id !== currentIngredient.id)
+        );
+        setIsEditDialogOpen(false);
+        toast.success('Ingredient deleted successfully', {
+          description: `${currentIngredient.name} has been removed from your inventory`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete ingredient:', error);
+      toast.error('Failed to delete ingredient', {
+        description: 'Please try again'
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -233,7 +328,11 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                 <TabsContent value="ingredients" className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold">Ingredients</h2>
-                    <Button size="sm" className="flex items-center space-x-2">
+                    <Button 
+                      size="sm" 
+                      className="flex items-center space-x-2"
+                      onClick={handleAddIngredient}
+                    >
                       <Plus className="h-4 w-4" />
                       <span>Add Ingredient</span>
                     </Button>
@@ -263,7 +362,12 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                                 </CardTitle>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button variant="outline" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={() => handleEditIngredient(ingredient)}
+                                    >
                                       <Edit className="h-3 w-3" />
                                     </Button>
                                   </TooltipTrigger>
@@ -459,6 +563,26 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
           {/* Cart Sidebar */}
           <CartSidebar />
         </div>
+        
+        {/* Ingredient Management Dialogs */}
+        <IngredientFormDialog
+          open={isAddDialogOpen}
+          onOpenChange={setIsAddDialogOpen}
+          onSubmit={handleCreateIngredient}
+          isSubmitting={isSubmitting}
+          title="Add New Ingredient"
+        />
+
+        {currentIngredient && (
+          <IngredientEditDialog
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            ingredient={currentIngredient}
+            onSave={handleUpdateIngredient}
+            onDelete={handleDeleteIngredient}
+            isSubmitting={isSubmitting}
+          />
+        )}
       </TooltipProvider>
     </div>
   );

@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { createServerClient } from '@/app/lib/supabase-server';
 import { redirect } from 'next/navigation';
-import DashboardContent from './components/dashboard-content';
+import NewDashboard from '@/app/components/new-dashboard';
 import { getIngredients } from '@/app/actions/ingredients';
 import { getMeals } from '@/app/actions/meals';
 import { getPackets } from '@/app/actions/packets';
@@ -24,20 +24,21 @@ export default async function DashboardPage() {
 }
 
 async function DashboardData({ userEmail }: { userEmail: string }) {
-  // Fetch counts for quick stats
+  // Fetch all data for the consolidated dashboard
   const [ingredients, meals, packets] = await Promise.all([
     getIngredients(),
     getMeals(),
     getPackets()
   ]);
 
-  const stats = {
-    ingredients: ingredients.length,
-    meals: meals.length,
-    packets: packets.length
-  };
-
-  return <DashboardContent userEmail={userEmail} stats={stats} />;
+  return (
+    <NewDashboard 
+      userEmail={userEmail} 
+      ingredients={ingredients as any[]} 
+      meals={meals as any[]} 
+      packets={packets as any[]} 
+    />
+  );
 }
 
 function DashboardSkeleton() {
