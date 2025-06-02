@@ -29,7 +29,8 @@ import {
   Eye,
   Settings,
   Filter,
-  MoreHorizontal
+  MoreHorizontal,
+  Edit
 } from 'lucide-react';
 
 interface Ingredient {
@@ -262,12 +263,12 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                                 </CardTitle>
                                 <Tooltip>
                                   <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                      <MoreHorizontal className="h-3 w-3" />
+                                    <Button variant="outline" size="sm" className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Edit className="h-3 w-3" />
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>More options</p>
+                                    <p>Edit ingredient</p>
                                   </TooltipContent>
                                 </Tooltip>
                               </div>

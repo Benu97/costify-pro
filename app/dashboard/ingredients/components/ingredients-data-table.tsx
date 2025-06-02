@@ -162,10 +162,10 @@ export default function IngredientsDataTable({ initialIngredients }: Ingredients
                         variant="outline" 
                         size="sm" 
                         onClick={() => handleEdit(ingredient)}
-                        className="h-9 px-3"
+                        className="h-9 px-3 bg-blue-50 border-blue-200"
                       >
                         <Edit className="h-4 w-4 mr-2" />
-                        Edit
+                        EDIT INGREDIENT
                       </Button>
                     </div>
                   </TableCell>
