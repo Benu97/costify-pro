@@ -19,8 +19,6 @@ import {
   Package,
   Utensils,
   Download,
-  Plus,
-  Minus,
   Edit,
   ChevronRight,
   GripVertical
@@ -30,8 +28,9 @@ export default function CartSidebar() {
   const { cart, cartItems, isLoading, cartSummary, updateItemQuantity, updateItemMarkup, removeItem } = useCart();
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editMarkup, setEditMarkup] = useState<number>(0);
+  const [editQuantity, setEditQuantity] = useState<number>(1);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [cartWidth, setCartWidth] = useState(400);
+  const [cartWidth, setCartWidth] = useState(450);
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
@@ -45,7 +44,7 @@ export default function CartSidebar() {
     
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = startX - e.clientX;
-      const newWidth = Math.min(Math.max(startWidth + deltaX, 300), 800);
+      const newWidth = Math.min(Math.max(startWidth + deltaX, 350), 800);
       setCartWidth(newWidth);
     };
     
@@ -59,19 +58,21 @@ export default function CartSidebar() {
     document.addEventListener('mouseup', handleMouseUp);
   }, [cartWidth]);
 
-  const handleEditMarkup = (itemId: string, currentMarkup: number) => {
+  const handleEdit = (itemId: string, currentMarkup: number, currentQuantity: number) => {
     setEditingItemId(itemId);
     setEditMarkup(currentMarkup);
+    setEditQuantity(currentQuantity);
   };
 
-  const handleSaveMarkup = async () => {
+  const handleSaveEdit = async () => {
     if (editingItemId) {
       try {
         await updateItemMarkup(editingItemId, editMarkup);
+        await updateItemQuantity(editingItemId, editQuantity);
         setEditingItemId(null);
-        toast.success('Markup updated successfully');
+        toast.success('Item updated successfully');
       } catch (error) {
-        toast.error('Failed to update markup');
+        toast.error('Failed to update item');
       }
     }
   };
@@ -79,17 +80,7 @@ export default function CartSidebar() {
   const handleCancelEdit = () => {
     setEditingItemId(null);
     setEditMarkup(0);
-  };
-
-  const handleQuantityChange = async (itemId: string, newQuantity: number) => {
-    if (newQuantity >= 1) {
-      try {
-        await updateItemQuantity(itemId, newQuantity);
-        toast.success('Quantity updated');
-      } catch (error) {
-        toast.error('Failed to update quantity');
-      }
-    }
+    setEditQuantity(1);
   };
 
   const handleExportPDF = () => {
@@ -164,13 +155,10 @@ export default function CartSidebar() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
               >
-                <h2 className="text-lg font-semibold flex items-center space-x-2">
-                  <ShoppingCart className="h-5 w-5" />
+                <h2 className="text-xl font-semibold flex items-center space-x-2">
+                  <ShoppingCart className="h-6 w-6" />
                   <span>Shopping Cart</span>
                 </h2>
-                <p className="text-sm text-muted-foreground">
-                  {cartItems.reduce((sum, item) => sum + item.quantity, 0)} items
-                </p>
               </motion.div>
             )}
             
@@ -198,7 +186,7 @@ export default function CartSidebar() {
             <Tooltip>
               <TooltipTrigger asChild>
                 <div className="flex items-center justify-center p-3 rounded-lg bg-muted/50 cursor-pointer">
-                  <Badge variant="secondary" className="h-6 w-6 rounded-full p-0 flex items-center justify-center">
+                  <Badge variant="secondary" className="h-8 w-8 rounded-full p-0 flex items-center justify-center text-base font-semibold">
                     {cartItems.reduce((sum, item) => sum + item.quantity, 0)}
                   </Badge>
                 </div>
@@ -232,7 +220,7 @@ export default function CartSidebar() {
         {!isCollapsed && (
           <>
             {/* Cart Items */}
-            <ScrollArea className="flex-1 p-4" style={{ width: `${cartWidth - 8}px` }}>
+            <div className="flex-1 overflow-auto p-4">
               {isLoading ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => (
@@ -251,7 +239,7 @@ export default function CartSidebar() {
                     <ShoppingCart className="h-8 w-8 text-muted-foreground" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-muted-foreground">Cart is empty</h3>
+                    <h3 className="font-medium text-muted-foreground text-base">Cart is empty</h3>
                     <p className="text-sm text-muted-foreground">Add meals or packets to get started</p>
                   </div>
                 </motion.div>
@@ -267,142 +255,133 @@ export default function CartSidebar() {
                         transition={{ delay: index * 0.1 }}
                         className="group"
                       >
-                        <Card className="p-3 transition-all hover:shadow-md" style={{ width: '100%' }}>
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start space-x-3 flex-1 min-w-0">
-                              <div className="p-2 rounded-lg bg-muted/50 flex-shrink-0">
+                        <Card className="p-4 transition-all hover:shadow-md">
+                          <div className="flex flex-col space-y-3">
+                            <div className="flex items-start space-x-3">
+                              <div className="p-3 rounded-lg bg-muted/50 flex-shrink-0">
                                 {item.item_type === 'meal' ? (
-                                  <Utensils className="h-4 w-4 text-blue-600" />
+                                  <Utensils className="h-6 w-6 text-blue-600" />
                                 ) : (
-                                  <Package className="h-4 w-4 text-purple-600" />
+                                  <Package className="h-6 w-6 text-purple-600" />
                                 )}
                               </div>
                               
                               <div className="flex-1 min-w-0">
-                                <h4 className="font-medium text-sm truncate">
-                                  {item.details?.name || 'Unknown Item'}
-                                </h4>
-                                <p className="text-xs text-muted-foreground truncate">
-                                  {item.details?.description || `${item.item_type}`}
-                                </p>
-                                
-                                {/* Quantity Controls */}
-                                <div className="mt-2 flex items-center space-x-2">
-                                  <Label className="text-xs">Qty:</Label>
-                                  <div className="flex items-center space-x-1">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                      onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                                      disabled={item.quantity <= 1}
-                                    >
-                                      <Minus className="h-3 w-3" />
-                                    </Button>
-                                    <span className="text-sm font-medium min-w-[20px] text-center">
-                                      {item.quantity}
-                                    </span>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-6 w-6 p-0"
-                                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                                    >
-                                      <Plus className="h-3 w-3" />
-                                    </Button>
-                                  </div>
+                                <div className="flex items-center space-x-2 mb-2">
+                                  <h4 className="font-medium text-base truncate">
+                                    {item.details?.name || 'Unknown Item'}
+                                  </h4>
+                                  <Badge variant="outline" className="text-sm font-semibold px-2 py-1 flex-shrink-0">
+                                    x{item.quantity}
+                                  </Badge>
                                 </div>
-                                
-                                {editingItemId === item.id ? (
-                                  <div className="mt-2 space-y-2">
-                                    <div>
-                                      <Label htmlFor="markup" className="text-xs">Markup %</Label>
-                                      <Input
-                                        id="markup"
-                                        type="number"
-                                        value={editMarkup}
-                                        onChange={(e) => setEditMarkup(Number(e.target.value))}
-                                        className="h-7 text-xs"
-                                        min="0"
-                                        max="1000"
-                                      />
-                                    </div>
-                                    <div className="flex space-x-1">
-                                      <Button
-                                        size="sm"
-                                        className="h-6 text-xs px-2"
-                                        onClick={handleSaveMarkup}
-                                      >
-                                        Save
-                                      </Button>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-6 text-xs px-2"
-                                        onClick={handleCancelEdit}
-                                      >
-                                        Cancel
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="mt-1 flex flex-wrap items-center gap-2">
-                                    <div className="text-xs space-y-1">
-                                      <div className="flex items-center space-x-2">
-                                        <span className="text-muted-foreground">Unit:</span>
-                                        <span className="font-medium">€{item.netPrice.toFixed(2)}</span>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <span className="text-muted-foreground">Markup:</span>
-                                        <Badge variant="outline" className="text-xs h-4">
-                                          {item.markup_pct}%
-                                        </Badge>
-                                      </div>
-                                      <div className="flex items-center space-x-2">
-                                        <span className="text-muted-foreground">Total:</span>
-                                        <span className="font-semibold text-green-600">
-                                          €{(item.grossPrice * item.quantity).toFixed(2)}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             </div>
                             
-                            <div className="flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
-                              <Tooltip>
-                                <TooltipTrigger asChild>
+                            {editingItemId === item.id ? (
+                              <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div>
+                                    <Label htmlFor="markup" className="text-sm font-medium">Markup %</Label>
+                                    <Input
+                                      id="markup"
+                                      type="number"
+                                      value={editMarkup}
+                                      onChange={(e) => setEditMarkup(Number(e.target.value))}
+                                      className="h-8 text-sm"
+                                      min="0"
+                                      max="1000"
+                                    />
+                                  </div>
+                                  <div>
+                                    <Label htmlFor="quantity" className="text-sm font-medium">Quantity</Label>
+                                    <Input
+                                      id="quantity"
+                                      type="number"
+                                      value={editQuantity}
+                                      onChange={(e) => setEditQuantity(Number(e.target.value))}
+                                      className="h-8 text-sm"
+                                      min="1"
+                                    />
+                                  </div>
+                                </div>
+                                <div className="flex space-x-2">
                                   <Button
-                                    variant="ghost"
                                     size="sm"
-                                    className="h-6 w-6 p-0"
-                                    onClick={() => handleEditMarkup(item.id, item.markup_pct)}
+                                    className="h-8 text-sm px-3 flex-1"
+                                    onClick={handleSaveEdit}
                                   >
-                                    <Edit className="h-3 w-3" />
+                                    Save
                                   </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Edit markup</p>
-                                </TooltipContent>
-                              </Tooltip>
-                              
-                              <Tooltip>
-                                <TooltipTrigger asChild>
                                   <Button
-                                    variant="ghost"
+                                    variant="outline"
                                     size="sm"
-                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-600"
-                                    onClick={() => removeItem(item.id)}
+                                    className="h-8 text-sm px-3 flex-1"
+                                    onClick={handleCancelEdit}
                                   >
-                                    <Trash2 className="h-3 w-3" />
+                                    Cancel
                                   </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>Remove item</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="grid grid-cols-1 gap-2 text-sm">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground">Unit Price:</span>
+                                    <span className="font-medium">€{item.netPrice.toFixed(2)}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground">Markup:</span>
+                                    <Badge variant="outline" className="text-xs h-5">
+                                      {item.markup_pct}%
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground font-medium">Total:</span>
+                                    <span className="font-semibold text-green-600 text-base">
+                                      €{(item.grossPrice * item.quantity).toFixed(2)}
+                                    </span>
+                                  </div>
+                                </div>
+                                
+                                {/* Action buttons moved to bottom */}
+                                <div className="flex space-x-2 pt-2">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 flex-1"
+                                        onClick={() => handleEdit(item.id, item.markup_pct, item.quantity)}
+                                      >
+                                        <Edit className="h-4 w-4 mr-1" />
+                                        Edit
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Edit item</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-8 flex-1 text-red-500 hover:text-red-600 border-red-200 hover:border-red-300"
+                                        onClick={() => removeItem(item.id)}
+                                      >
+                                        <Trash2 className="h-4 w-4 mr-1" />
+                                        Remove
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Remove item</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
+                              </>
+                            )}
                           </div>
                         </Card>
                       </motion.div>
@@ -410,7 +389,7 @@ export default function CartSidebar() {
                   </div>
                 </AnimatePresence>
               )}
-            </ScrollArea>
+            </div>
 
             {/* Cart Summary & Actions */}
             {cartItems.length > 0 && (
@@ -418,22 +397,21 @@ export default function CartSidebar() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="p-4 border-t space-y-4"
-                style={{ width: `${cartWidth - 8}px` }}
               >
-                <Card className="p-3 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20">
-                  <div className="space-y-2 text-sm">
+                <Card className="p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20">
+                  <div className="space-y-3 text-base">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Net Total:</span>
                       <span className="font-medium">€{cartSummary.nettoTotal.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Avg. Markup:</span>
-                      <Badge variant="outline" className="h-5">
+                      <Badge variant="outline" className="h-6 text-sm">
                         {cartSummary.avgMarkupPct.toFixed(1)}%
                       </Badge>
                     </div>
                     <Separator />
-                    <div className="flex justify-between text-base font-semibold">
+                    <div className="flex justify-between text-lg font-semibold">
                       <span>Gross Total:</span>
                       <span className="text-green-600">€{cartSummary.bruttoTotal.toFixed(2)}</span>
                     </div>
@@ -443,11 +421,11 @@ export default function CartSidebar() {
                 <div className="space-y-2">
                   <Button 
                     variant="default" 
-                    className="w-full" 
+                    className="w-full h-12 text-base" 
                     onClick={handleExportPDF}
                     disabled={isLoading}
                   >
-                    <Download className="h-4 w-4 mr-2" />
+                    <Download className="h-5 w-5 mr-2" />
                     Export PDF Quote
                   </Button>
                 </div>

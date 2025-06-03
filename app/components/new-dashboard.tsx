@@ -426,28 +426,28 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
           animate={{ y: 0, opacity: 1 }}
           className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-lg"
         >
-          <div className="container mx-auto px-6 py-4">
+          <div className="container mx-auto px-6 py-2">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-3">
                 <motion.div 
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="h-10 w-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center"
+                  className="h-8 w-8 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center"
                 >
-                  <Utensils className="h-6 w-6 text-white" />
+                  <Utensils className="h-5 w-5 text-white" />
                 </motion.div>
                 <div>
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
                     Costify Pro
                   </h1>
-                  <p className="text-sm text-muted-foreground">Professional Food Costing</p>
+                  <p className="text-xs text-muted-foreground">Professional Food Costing</p>
                 </div>
               </div>
               
               {/* Quick Stats */}
-              <div className="hidden md:flex items-center space-x-6">
-                <div className="flex items-center space-x-4">
+              <div className="hidden md:flex items-center space-x-4">
+                <div className="flex items-center space-x-3">
                   <HoverCard>
                     <HoverCardTrigger asChild>
                       <div className="flex items-center space-x-2 cursor-pointer">
@@ -455,7 +455,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                           <TrendingUp className="h-3 w-3" />
                           <span>{stats.totalItems}</span>
                         </Badge>
-                        <span className="text-sm text-muted-foreground">Total Items</span>
+                        <span className="text-xs text-muted-foreground">Total Items</span>
                       </div>
                     </HoverCardTrigger>
                     <HoverCardContent className="w-80">
@@ -482,7 +482,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                 
                 <div className="flex items-center space-x-2">
                   <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{userEmail}</span>
+                  <span className="text-xs font-medium">{userEmail}</span>
                 </div>
                 
                 <LogoutButton />
@@ -494,28 +494,28 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
         {/* Main Layout */}
         <div className="flex">
           {/* Main Content */}
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-4">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
               {/* Search Bar */}
-              <div className="mb-6">
-                <div className="relative max-w-md">
+              <div className="mb-4 pr-4">
+                <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search items..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 bg-background/50 backdrop-blur-sm border-muted"
+                    className="w-full pl-10 bg-background/50 backdrop-blur-sm border-muted"
                   />
                 </div>
               </div>
 
               {/* Tabs */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsList className="grid w-full grid-cols-3 mb-4">
                   <TabsTrigger value="ingredients" className="flex items-center space-x-2">
                     <Wheat className="h-4 w-4" />
                     <span>Ingredients</span>
@@ -549,7 +549,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                   
                   <AnimatePresence>
                     <motion.div 
-                      className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                      className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ staggerChildren: 0.1 }}
@@ -622,7 +622,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                   
                   <AnimatePresence>
                     <motion.div 
-                      className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+                      className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ staggerChildren: 0.1 }}
@@ -726,7 +726,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                   
                   <AnimatePresence>
                     <motion.div 
-                      className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+                      className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ staggerChildren: 0.1 }}

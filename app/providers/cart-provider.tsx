@@ -43,6 +43,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<Cart | null>(null);
   const [cartItems, setCartItems] = useState<DetailedCartItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false); // Prevent concurrent operations
 
   // Calculate cart summary using a safe approach
   const cartSummary = useMemo(() => {
@@ -100,9 +101,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             const existingItem = groupedItems.get(key)!;
             existingItem.quantity += 1;
           } else {
-            // New item
+            // New item - use a unique ID for the grouped item
+            const groupedItemId = `grouped_${item.item_id}_${item.markup_pct}`;
             groupedItems.set(key, {
               ...item,
+              id: groupedItemId, // Use a consistent ID for grouped items
               netPrice,
               grossPrice,
               markup_pct: item.markup_pct || 0,
@@ -157,12 +160,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   // Update cart item quantity
   const updateItemQuantity = async (itemId: string, newQuantity: number) => {
-    if (!cart || newQuantity < 1) return;
+    if (!cart || newQuantity < 1 || isUpdating) return;
     
     try {
+      setIsUpdating(true);
       setIsLoading(true);
       
-      // Find the cart item
+      // Find the cart item in our local state (itemId is the grouped ID)
       const cartItem = cartItems.find(item => item.id === itemId);
       if (!cartItem) return;
       
@@ -170,7 +174,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const difference = newQuantity - currentQuantity;
       
       if (difference > 0) {
-        // Add more items
+        // Add more items to the database
         for (let i = 0; i < difference; i++) {
           await addItemToCart({
             cart_id: cart.id,
@@ -180,60 +184,109 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           });
         }
       } else if (difference < 0) {
-        // Remove items (simplified approach - in reality you'd need to track individual cart_item records)
-        // For now, we'll update the local state and refresh
-        cartItem.quantity = newQuantity;
-        setCartItems([...cartItems]);
+        // We need to remove items from the database
+        // Get all individual cart_item records for this grouped item
+        const allCartItems = await getCartItems(cart.id);
+        const matchingItems = allCartItems.filter(item => 
+          item.item_id === cartItem.item_id && 
+          item.markup_pct === cartItem.markup_pct
+        );
+        
+        // Remove the excess items (absolute value of difference)
+        const itemsToRemove = matchingItems.slice(0, Math.abs(difference));
+        for (const itemToRemove of itemsToRemove) {
+          await removeCartItem(itemToRemove.id);
+        }
       }
       
-      // Refresh cart data
+      // Refresh cart data to get the updated state
       await loadCart();
     } catch (error) {
       console.error('Error updating cart item quantity:', error);
+      // Revert local state by reloading from database
+      await loadCart();
     } finally {
       setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 
   // Update cart item markup
   const updateItemMarkup = async (itemId: string, markupPct: number) => {
-    if (!cart) return;
+    if (!cart || isUpdating) return;
     
     try {
+      setIsUpdating(true);
       setIsLoading(true);
-      const itemToUpdate = cartItems.find(item => item.id === itemId);
       
-      if (itemToUpdate) {
-        await updateCartItem({
-          id: itemId,
-          cart_id: cart.id,
-          item_type: itemToUpdate.item_type,
-          item_id: itemToUpdate.item_id,
-          markup_pct: markupPct
-        });
-      }
+      // Find the cart item in our local state (itemId is the grouped ID)
+      const cartItem = cartItems.find(item => item.id === itemId);
+      if (!cartItem) return;
+      
+      // Get all individual cart_item records for this grouped item
+      const allCartItems = await getCartItems(cart.id);
+      const matchingItems = allCartItems.filter(item => 
+        item.item_id === cartItem.item_id && 
+        item.markup_pct === cartItem.markup_pct
+      );
+      
+             // Update all matching items to have the new markup
+       for (const item of matchingItems) {
+         await updateCartItem({
+           id: item.id,
+           cart_id: cart.id,
+           item_type: item.item_type as 'meal' | 'packet',
+           item_id: item.item_id,
+           markup_pct: markupPct
+         });
+       }
       
       // Refresh cart data
       await loadCart();
     } catch (error) {
       console.error('Error updating cart item markup:', error);
+      // Revert by reloading from database
+      await loadCart();
     } finally {
       setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 
   // Remove item from cart
   const removeItem = async (itemId: string) => {
+    if (!cart || isUpdating) return;
+    
     try {
+      setIsUpdating(true);
       setIsLoading(true);
-      await removeCartItem(itemId);
       
-      // Update local state
+      // Find the cart item in our local state (itemId is the grouped ID)
+      const cartItem = cartItems.find(item => item.id === itemId);
+      if (!cartItem) return;
+      
+      // Get all individual cart_item records for this grouped item
+      const allCartItems = await getCartItems(cart.id);
+      const matchingItems = allCartItems.filter(item => 
+        item.item_id === cartItem.item_id && 
+        item.markup_pct === cartItem.markup_pct
+      );
+      
+      // Remove ALL matching items from the database
+      for (const item of matchingItems) {
+        await removeCartItem(item.id);
+      }
+      
+      // Update local state immediately to prevent flickering
       setCartItems(prevItems => prevItems.filter(item => item.id !== itemId));
+      
     } catch (error) {
       console.error('Error removing cart item:', error);
+      // Revert by reloading from database
+      await loadCart();
     } finally {
       setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 
