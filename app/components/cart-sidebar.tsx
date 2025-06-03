@@ -219,13 +219,13 @@ export default function CartSidebar() {
         {/* Expanded State */}
         {!isCollapsed && (
           <>
-            {/* Cart Items */}
-            <div className="flex-1 overflow-auto p-4">
+            {/* Cart Items - Scrollable area with fixed height */}
+            <div className="flex-1 overflow-auto">
               {isLoading ? (
-                <div className="space-y-3">
-                  {[...Array(3)].map((_, i) => (
+                <div className="p-3 space-y-2">
+                  {[...Array(5)].map((_, i) => (
                     <div key={i} className="animate-pulse">
-                      <div className="h-20 bg-muted rounded-lg"></div>
+                      <div className="h-16 bg-muted/50 rounded-md"></div>
                     </div>
                   ))}
                 </div>
@@ -233,9 +233,9 @@ export default function CartSidebar() {
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex flex-col items-center justify-center h-full text-center space-y-4"
+                  className="flex flex-col items-center justify-center h-full text-center p-6"
                 >
-                  <div className="p-4 rounded-full bg-muted/50">
+                  <div className="p-4 rounded-full bg-gradient-to-br from-muted to-muted/50 mb-4">
                     <ShoppingCart className="h-8 w-8 text-muted-foreground" />
                   </div>
                   <div>
@@ -244,192 +244,197 @@ export default function CartSidebar() {
                   </div>
                 </motion.div>
               ) : (
-                <AnimatePresence>
-                  <div className="space-y-3">
+                <div className="p-3 space-y-2">
+                  <AnimatePresence>
                     {cartItems.map((item, index) => (
                       <motion.div
                         key={item.id}
-                        initial={{ opacity: 0, x: 20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -20 }}
-                        transition={{ delay: index * 0.1 }}
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ delay: index * 0.05 }}
                         className="group"
                       >
-                        <Card className="p-4 transition-all hover:shadow-md">
-                          <div className="flex flex-col space-y-3">
-                            <div className="flex items-start space-x-3">
-                              <div className="p-3 rounded-lg bg-muted/50 flex-shrink-0">
-                                {item.item_type === 'meal' ? (
-                                  <Utensils className="h-6 w-6 text-blue-600" />
-                                ) : (
-                                  <Package className="h-6 w-6 text-purple-600" />
-                                )}
+                        <div className="relative bg-gradient-to-r from-card to-card/80 rounded-lg border border-border/50 hover:border-border transition-all duration-200 hover:shadow-sm">
+                          {editingItemId === item.id ? (
+                            /* Edit Mode */
+                            <div className="p-3 space-y-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="p-1.5 rounded-md bg-gradient-to-br from-primary/10 to-primary/20">
+                                  {item.item_type === 'meal' ? (
+                                    <Utensils className="h-3 w-3 text-primary" />
+                                  ) : (
+                                    <Package className="h-3 w-3 text-primary" />
+                                  )}
+                                </div>
+                                <h4 className="font-medium text-sm truncate">
+                                  {item.details?.name || 'Unknown Item'}
+                                </h4>
                               </div>
                               
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center space-x-2 mb-2">
-                                  <h4 className="font-medium text-base truncate">
-                                    {item.details?.name || 'Unknown Item'}
-                                  </h4>
-                                  <Badge variant="outline" className="text-sm font-semibold px-2 py-1 flex-shrink-0">
-                                    x{item.quantity}
-                                  </Badge>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                  <Label htmlFor="markup" className="text-xs">Markup %</Label>
+                                  <Input
+                                    id="markup"
+                                    type="number"
+                                    value={editMarkup}
+                                    onChange={(e) => setEditMarkup(Number(e.target.value))}
+                                    className="h-7 text-xs"
+                                    min="0"
+                                    max="1000"
+                                  />
                                 </div>
+                                <div>
+                                  <Label htmlFor="quantity" className="text-xs">Qty</Label>
+                                  <Input
+                                    id="quantity"
+                                    type="number"
+                                    value={editQuantity}
+                                    onChange={(e) => setEditQuantity(Number(e.target.value))}
+                                    className="h-7 text-xs"
+                                    min="1"
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs px-3 flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
+                                  onClick={handleSaveEdit}
+                                >
+                                  Save
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs px-3 flex-1"
+                                  onClick={handleCancelEdit}
+                                >
+                                  Cancel
+                                </Button>
                               </div>
                             </div>
-                            
-                            {editingItemId === item.id ? (
-                              <div className="space-y-3">
-                                <div className="grid grid-cols-2 gap-2">
-                                  <div>
-                                    <Label htmlFor="markup" className="text-sm font-medium">Markup %</Label>
-                                    <Input
-                                      id="markup"
-                                      type="number"
-                                      value={editMarkup}
-                                      onChange={(e) => setEditMarkup(Number(e.target.value))}
-                                      className="h-8 text-sm"
-                                      min="0"
-                                      max="1000"
-                                    />
-                                  </div>
-                                  <div>
-                                    <Label htmlFor="quantity" className="text-sm font-medium">Quantity</Label>
-                                    <Input
-                                      id="quantity"
-                                      type="number"
-                                      value={editQuantity}
-                                      onChange={(e) => setEditQuantity(Number(e.target.value))}
-                                      className="h-8 text-sm"
-                                      min="1"
-                                    />
-                                  </div>
+                          ) : (
+                            /* Display Mode */
+                            <div className="p-3">
+                              {/* Header with icon, name, and quantity */}
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="p-1.5 rounded-md bg-gradient-to-br from-primary/10 to-primary/20 flex-shrink-0">
+                                  {item.item_type === 'meal' ? (
+                                    <Utensils className="h-3 w-3 text-primary" />
+                                  ) : (
+                                    <Package className="h-3 w-3 text-primary" />
+                                  )}
                                 </div>
-                                <div className="flex space-x-2">
-                                  <Button
-                                    size="sm"
-                                    className="h-8 text-sm px-3 flex-1"
-                                    onClick={handleSaveEdit}
-                                  >
-                                    Save
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 text-sm px-3 flex-1"
-                                    onClick={handleCancelEdit}
-                                  >
-                                    Cancel
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="grid grid-cols-1 gap-2 text-sm">
+                                <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-2">
-                                    <span className="text-muted-foreground">Unit Price:</span>
-                                    <span className="font-medium">€{item.netPrice.toFixed(2)}</span>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-muted-foreground">Markup:</span>
-                                    <Badge variant="outline" className="text-xs h-5">
-                                      {item.markup_pct}%
+                                    <h4 className="font-medium text-sm truncate">
+                                      {item.details?.name || 'Unknown Item'}
+                                    </h4>
+                                    <Badge variant="secondary" className="text-xs h-5 px-1.5 font-semibold">
+                                      {item.quantity}x
                                     </Badge>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-muted-foreground font-medium">Total:</span>
-                                    <span className="font-semibold text-green-600 text-base">
-                                      €{(item.grossPrice * item.quantity).toFixed(2)}
-                                    </span>
+                                </div>
+                              </div>
+                              
+                              {/* Price info in compact grid */}
+                              <div className="grid grid-cols-3 gap-2 text-xs mb-2">
+                                <div className="text-center">
+                                  <div className="text-muted-foreground">Unit</div>
+                                  <div className="font-medium">€{item.netPrice.toFixed(2)}</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-muted-foreground">Markup</div>
+                                  <div className="font-medium text-orange-600">{item.markup_pct}%</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-muted-foreground">Total</div>
+                                  <div className="font-semibold text-green-600">
+                                    €{(item.grossPrice * item.quantity).toFixed(2)}
                                   </div>
                                 </div>
-                                
-                                {/* Action buttons moved to bottom */}
-                                <div className="flex space-x-2 pt-2">
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 flex-1"
-                                        onClick={() => handleEdit(item.id, item.markup_pct, item.quantity)}
-                                      >
-                                        <Edit className="h-4 w-4 mr-1" />
-                                        Edit
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Edit item</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-8 flex-1 text-red-500 hover:text-red-600 border-red-200 hover:border-red-300"
-                                        onClick={() => removeItem(item.id)}
-                                      >
-                                        <Trash2 className="h-4 w-4 mr-1" />
-                                        Remove
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>Remove item</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </Card>
+                              </div>
+                              
+                              {/* Action buttons */}
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 flex-1 text-xs"
+                                  onClick={() => handleEdit(item.id, item.markup_pct, item.quantity)}
+                                >
+                                  <Edit className="h-3 w-3 mr-1" />
+                                  Edit
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 flex-1 text-xs text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50"
+                                  onClick={() => removeItem(item.id)}
+                                >
+                                  <Trash2 className="h-3 w-3 mr-1" />
+                                  Remove
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </motion.div>
                     ))}
-                  </div>
-                </AnimatePresence>
+                  </AnimatePresence>
+                </div>
               )}
             </div>
 
-            {/* Cart Summary & Actions */}
+            {/* Fixed Cart Summary & Actions at Bottom */}
             {cartItems.length > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 border-t space-y-4"
-              >
-                <Card className="p-4 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20">
-                  <div className="space-y-3 text-base">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Net Total:</span>
-                      <span className="font-medium">€{cartSummary.nettoTotal.toFixed(2)}</span>
+              <div className="border-t bg-gradient-to-r from-background to-background/95 backdrop-blur-sm">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 space-y-3"
+                >
+                  {/* Summary Card */}
+                  <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-green-50/80 to-blue-50/80 dark:from-green-950/20 dark:to-blue-950/20 border border-green-200/50 dark:border-green-800/50 p-3">
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Net Total:</span>
+                        <span className="font-medium">€{cartSummary.nettoTotal.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Avg. Markup:</span>
+                        <Badge variant="outline" className="h-5 text-xs px-2">
+                          {cartSummary.avgMarkupPct.toFixed(1)}%
+                        </Badge>
+                      </div>
+                      <Separator className="my-2" />
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold">Gross Total:</span>
+                        <span className="text-lg font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
+                          €{cartSummary.bruttoTotal.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Avg. Markup:</span>
-                      <Badge variant="outline" className="h-6 text-sm">
-                        {cartSummary.avgMarkupPct.toFixed(1)}%
-                      </Badge>
-                    </div>
-                    <Separator />
-                    <div className="flex justify-between text-lg font-semibold">
-                      <span>Gross Total:</span>
-                      <span className="text-green-600">€{cartSummary.bruttoTotal.toFixed(2)}</span>
-                    </div>
+                    
+                    {/* Subtle background pattern */}
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-100/30 to-transparent dark:from-green-900/30 rounded-full -translate-y-4 translate-x-4"></div>
                   </div>
-                </Card>
 
-                <div className="space-y-2">
+                  {/* Export Button */}
                   <Button 
                     variant="default" 
-                    className="w-full h-12 text-base" 
+                    className="w-full h-10 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground font-medium" 
                     onClick={handleExportPDF}
                     disabled={isLoading}
                   >
-                    <Download className="h-5 w-5 mr-2" />
+                    <Download className="h-4 w-4 mr-2" />
                     Export PDF Quote
                   </Button>
-                </div>
-              </motion.div>
+                </motion.div>
+              </div>
             )}
           </>
         )}
