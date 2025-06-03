@@ -21,7 +21,9 @@ import {
   Download,
   Edit,
   ChevronRight,
-  GripVertical
+  GripVertical,
+  Minus,
+  Plus
 } from 'lucide-react';
 
 export default function CartSidebar() {
@@ -195,32 +197,14 @@ export default function CartSidebar() {
                 <p>{cartItems.reduce((sum, item) => sum + item.quantity, 0)} items in cart</p>
               </TooltipContent>
             </Tooltip>
-            
-            {cartItems.length > 0 && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="w-full h-8 p-0"
-                    onClick={handleExportPDF}
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="left">
-                  <p>Export PDF (€{cartSummary.bruttoTotal.toFixed(2)})</p>
-                </TooltipContent>
-              </Tooltip>
-            )}
           </div>
         )}
 
         {/* Expanded State */}
         {!isCollapsed && (
           <>
-            {/* Cart Items - Scrollable area with fixed height */}
-            <div className="flex-1 overflow-auto">
+            {/* Cart Items - Scrollable area with space for external fixed summary */}
+            <div className="flex-1 overflow-auto pb-32">
               {isLoading ? (
                 <div className="p-3 space-y-2">
                   {[...Array(5)].map((_, i) => (
@@ -255,16 +239,16 @@ export default function CartSidebar() {
                         transition={{ delay: index * 0.05 }}
                         className="group"
                       >
-                        <div className="relative bg-gradient-to-r from-card to-card/80 rounded-lg border border-border/50 hover:border-border transition-all duration-200 hover:shadow-sm">
+                        <div className="relative bg-gradient-to-r from-card to-card/80 rounded-lg border border-border/50 hover:border-orange-400 hover:shadow-md hover:shadow-orange-400/20 transition-all duration-200">
                           {editingItemId === item.id ? (
                             /* Edit Mode */
                             <div className="p-3 space-y-3">
                               <div className="flex items-center gap-2 mb-2">
-                                <div className="p-1.5 rounded-md bg-gradient-to-br from-primary/10 to-primary/20">
+                                <div className="p-2 rounded-md flex-shrink-0">
                                   {item.item_type === 'meal' ? (
-                                    <Utensils className="h-3 w-3 text-primary" />
+                                    <Utensils className="h-5 w-5 text-blue-600" />
                                   ) : (
-                                    <Package className="h-3 w-3 text-primary" />
+                                    <Package className="h-5 w-5 text-purple-600" />
                                   )}
                                 </div>
                                 <h4 className="font-medium text-sm truncate">
@@ -272,29 +256,70 @@ export default function CartSidebar() {
                                 </h4>
                               </div>
                               
-                              <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-3">
+                                {/* Markup % with +/- buttons */}
                                 <div>
-                                  <Label htmlFor="markup" className="text-xs">Markup %</Label>
-                                  <Input
-                                    id="markup"
-                                    type="number"
-                                    value={editMarkup}
-                                    onChange={(e) => setEditMarkup(Number(e.target.value))}
-                                    className="h-7 text-xs"
-                                    min="0"
-                                    max="1000"
-                                  />
+                                  <Label htmlFor="markup" className="text-xs mb-1 block">Markup %</Label>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 w-7 p-0 hover:bg-orange-50 hover:border-orange-300"
+                                      onClick={() => setEditMarkup(Math.max(0, editMarkup - 1))}
+                                    >
+                                      <Minus className="h-3 w-3" />
+                                    </Button>
+                                    <Input
+                                      id="markup"
+                                      type="number"
+                                      value={editMarkup}
+                                      onChange={(e) => setEditMarkup(Number(e.target.value))}
+                                      className="h-7 text-xs text-center flex-1 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      min="0"
+                                      max="1000"
+                                    />
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 w-7 p-0 hover:bg-orange-50 hover:border-orange-300"
+                                      onClick={() => setEditMarkup(Math.min(1000, editMarkup + 1))}
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                 </div>
+                                
+                                <Separator className="my-2" />
+                                
+                                {/* Quantity with +/- buttons */}
                                 <div>
-                                  <Label htmlFor="quantity" className="text-xs">Qty</Label>
-                                  <Input
-                                    id="quantity"
-                                    type="number"
-                                    value={editQuantity}
-                                    onChange={(e) => setEditQuantity(Number(e.target.value))}
-                                    className="h-7 text-xs"
-                                    min="1"
-                                  />
+                                  <Label htmlFor="quantity" className="text-xs mb-1 block">Quantity</Label>
+                                  <div className="flex items-center gap-1">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 w-7 p-0 hover:bg-orange-50 hover:border-orange-300"
+                                      onClick={() => setEditQuantity(Math.max(1, editQuantity - 1))}
+                                    >
+                                      <Minus className="h-3 w-3" />
+                                    </Button>
+                                    <Input
+                                      id="quantity"
+                                      type="number"
+                                      value={editQuantity}
+                                      onChange={(e) => setEditQuantity(Number(e.target.value))}
+                                      className="h-7 text-xs text-center flex-1 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                      min="1"
+                                    />
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 w-7 p-0 hover:bg-orange-50 hover:border-orange-300"
+                                      onClick={() => setEditQuantity(editQuantity + 1)}
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                               
@@ -309,7 +334,7 @@ export default function CartSidebar() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-7 text-xs px-3 flex-1"
+                                  className="h-7 text-xs px-3 flex-1 hover:bg-orange-50 hover:border-orange-300"
                                   onClick={handleCancelEdit}
                                 >
                                   Cancel
@@ -321,34 +346,35 @@ export default function CartSidebar() {
                             <div className="p-3">
                               {/* Header with icon, name, and quantity */}
                               <div className="flex items-center gap-2 mb-2">
-                                <div className="p-1.5 rounded-md bg-gradient-to-br from-primary/10 to-primary/20 flex-shrink-0">
+                                <div className="p-2 rounded-md flex-shrink-0">
                                   {item.item_type === 'meal' ? (
-                                    <Utensils className="h-3 w-3 text-primary" />
+                                    <Utensils className="h-5 w-5 text-blue-600" />
                                   ) : (
-                                    <Package className="h-3 w-3 text-primary" />
+                                    <Package className="h-5 w-5 text-purple-600" />
                                   )}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <h4 className="font-medium text-sm truncate">
-                                      {item.details?.name || 'Unknown Item'}
-                                    </h4>
-                                    <Badge variant="secondary" className="text-xs h-5 px-1.5 font-semibold">
-                                      {item.quantity}x
-                                    </Badge>
-                                  </div>
+                                  <h4 className="font-medium text-sm truncate">
+                                    {item.details?.name || 'Unknown Item'}
+                                  </h4>
                                 </div>
                               </div>
                               
                               {/* Price info in compact grid */}
-                              <div className="grid grid-cols-3 gap-2 text-xs mb-2">
+                              <div className="grid grid-cols-4 gap-2 text-xs mb-2">
+                                <div className="text-center">
+                                  <div className="text-muted-foreground">Qty</div>
+                                  <Badge variant="secondary" className="text-xs h-5 px-1.5 font-semibold">
+                                    {item.quantity}x
+                                  </Badge>
+                                </div>
                                 <div className="text-center">
                                   <div className="text-muted-foreground">Unit</div>
                                   <div className="font-medium">€{item.netPrice.toFixed(2)}</div>
                                 </div>
                                 <div className="text-center">
                                   <div className="text-muted-foreground">Markup</div>
-                                  <div className="font-medium text-orange-600">{item.markup_pct}%</div>
+                                  <div className="font-medium">{item.markup_pct}%</div>
                                 </div>
                                 <div className="text-center">
                                   <div className="text-muted-foreground">Total</div>
@@ -363,7 +389,7 @@ export default function CartSidebar() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-7 flex-1 text-xs"
+                                  className="h-7 flex-1 text-xs hover:bg-orange-50 hover:border-orange-300"
                                   onClick={() => handleEdit(item.id, item.markup_pct, item.quantity)}
                                 >
                                   <Edit className="h-3 w-3 mr-1" />
@@ -388,57 +414,98 @@ export default function CartSidebar() {
                 </div>
               )}
             </div>
-
-            {/* Fixed Cart Summary & Actions at Bottom */}
-            {cartItems.length > 0 && (
-              <div className="border-t bg-gradient-to-r from-background to-background/95 backdrop-blur-sm">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="p-3 space-y-3"
-                >
-                  {/* Summary Card */}
-                  <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-green-50/80 to-blue-50/80 dark:from-green-950/20 dark:to-blue-950/20 border border-green-200/50 dark:border-green-800/50 p-3">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Net Total:</span>
-                        <span className="font-medium">€{cartSummary.nettoTotal.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Avg. Markup:</span>
-                        <Badge variant="outline" className="h-5 text-xs px-2">
-                          {cartSummary.avgMarkupPct.toFixed(1)}%
-                        </Badge>
-                      </div>
-                      <Separator className="my-2" />
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold">Gross Total:</span>
-                        <span className="text-lg font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
-                          €{cartSummary.bruttoTotal.toFixed(2)}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Subtle background pattern */}
-                    <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-100/30 to-transparent dark:from-green-900/30 rounded-full -translate-y-4 translate-x-4"></div>
-                  </div>
-
-                  {/* Export Button */}
-                  <Button 
-                    variant="default" 
-                    className="w-full h-10 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-primary-foreground font-medium" 
-                    onClick={handleExportPDF}
-                    disabled={isLoading}
-                  >
-                    <Download className="h-4 w-4 mr-2" />
-                    Export PDF Quote
-                  </Button>
-                </motion.div>
-              </div>
-            )}
           </>
         )}
       </div>
     </motion.aside>
+  );
+}
+
+// Fixed Cart Summary Component - to be placed at bottom right of page
+export function CartSummaryFixed() {
+  const { cartItems, cartSummary, isLoading } = useCart();
+
+  const handleExportPDF = () => {
+    try {
+      // Convert cart items to PDF format
+      const pdfItems: CartItemForPDF[] = cartItems.map(item => ({
+        id: item.id,
+        name: item.details?.name || 'Unknown Item',
+        description: item.details?.description,
+        type: item.item_type as 'meal' | 'packet',
+        quantity: item.quantity,
+        basePrice: item.netPrice / (1 + item.markup_pct / 100), // Calculate base price from net price
+        markupPct: item.markup_pct,
+        netPrice: item.netPrice,
+        grossPrice: item.grossPrice
+      }));
+
+      // Convert cart summary to PDF format
+      const pdfSummary: CartSummaryForPDF = {
+        nettoTotal: cartSummary.nettoTotal,
+        avgMarkupPct: cartSummary.avgMarkupPct,
+        bruttoTotal: cartSummary.bruttoTotal,
+        itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0)
+      };
+
+      // Generate and download PDF
+      generateCartPDF(pdfItems, pdfSummary);
+      
+      toast.success('PDF exported successfully', {
+        description: 'Your quote has been downloaded'
+      });
+    } catch (error) {
+      console.error('Failed to export PDF:', error);
+      toast.error('Failed to export PDF', {
+        description: 'Please try again'
+      });
+    }
+  };
+
+  if (cartItems.length === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="fixed bottom-6 right-6 z-[9999] w-72"
+    >
+      {/* Summary Card */}
+      <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-green-50/95 to-blue-50/95 dark:from-green-950/90 dark:to-blue-950/90 border border-green-200/80 dark:border-green-800/80 p-4 backdrop-blur-md shadow-xl mb-3">
+        <div className="space-y-3">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Net Total:</span>
+            <span className="font-medium">€{cartSummary.nettoTotal.toFixed(2)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Avg. Markup:</span>
+            <Badge variant="outline" className="h-5 text-sm px-2 font-medium">
+              {cartSummary.avgMarkupPct.toFixed(1)}%
+            </Badge>
+          </div>
+          <Separator className="my-2" />
+          <div className="flex justify-between items-center">
+            <span className="font-semibold text-base">Gross Total:</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
+              €{cartSummary.bruttoTotal.toFixed(2)}
+            </span>
+          </div>
+        </div>
+        
+        {/* Subtle background pattern */}
+        <div className="absolute top-0 right-0 w-20 h-20 bg-gradient-to-br from-green-100/40 to-transparent dark:from-green-900/40 rounded-full -translate-y-4 translate-x-4"></div>
+      </div>
+
+      {/* Export Button */}
+      <Button 
+        variant="outline" 
+        className="w-full h-12 bg-gray-900 text-white border-green-400/50 hover:bg-green-600/20 hover:!border-orange-400 hover:shadow-orange-400/20 font-medium transition-all duration-200 shadow-lg hover:shadow-xl backdrop-blur-sm" 
+        onClick={handleExportPDF}
+        disabled={isLoading}
+      >
+        <Download className="h-5 w-5 mr-2" />
+        Export PDF Quote
+      </Button>
+    </motion.div>
   );
 } 

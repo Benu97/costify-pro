@@ -13,7 +13,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { useCart } from '@/app/providers/cart-provider';
 import { searchItems } from '@/app/actions/cart';
 import LogoutButton from '@/app/components/LogoutButton';
-import CartSidebar from '@/app/components/cart-sidebar';
+import CartSidebar, { CartSummaryFixed } from '@/app/components/cart-sidebar';
 import { AddToCartDialog } from '@/app/components/add-to-cart-dialog';
 import { IngredientEditDialog } from '@/app/dashboard/ingredients/components/ingredient-edit-dialog';
 import { IngredientFormDialog } from '@/app/dashboard/ingredients/components/ingredient-form-dialog';
@@ -915,6 +915,9 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
             );
           }}
         />
+        
+        {/* Fixed Cart Summary at Bottom Right */}
+        <CartSummaryFixed />
       </TooltipProvider>
     </div>
   );
