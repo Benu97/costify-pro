@@ -117,7 +117,7 @@ export const addItemToCart = withAuth(async (formData: CartItemFormValues) => {
     throw new Error(`Failed to add item to cart: ${error.message}`);
   }
 
-  revalidatePath('/cart');
+  revalidatePath('/');
   return { success: true, data };
 });
 
@@ -144,7 +144,7 @@ export const updateCartItem = withAuth(async (formData: CartItemFormValues) => {
     throw new Error(`Failed to update cart item: ${error.message}`);
   }
 
-  revalidatePath('/cart');
+  revalidatePath('/');
   return { success: true, data };
 });
 
@@ -160,7 +160,7 @@ export const removeCartItem = withAuth(async (id: string) => {
     throw new Error(`Failed to remove cart item: ${error.message}`);
   }
 
-  revalidatePath('/cart');
+  revalidatePath('/');
   return { success: true };
 });
 
@@ -199,7 +199,7 @@ export const finalizeCart = withAuth(async (cartId: string) => {
     throw new Error('Failed to create new draft cart');
   }
 
-  revalidatePath('/cart');
+  revalidatePath('/');
   return { success: true, newCartId: newCart.id };
 });
 

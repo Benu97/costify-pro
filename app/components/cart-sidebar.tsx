@@ -1,12 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useCart } from '@/app/providers/cart-provider';
 import { generateCartPDF, CartItemForPDF, CartSummaryForPDF } from '@/app/lib/pdf-export';
-import { SaveQuoteDialog } from './save-quote-dialog';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -19,24 +18,46 @@ import {
   Trash2, 
   Package,
   Utensils,
-  DollarSign,
-  TrendingUp,
   Download,
   Plus,
   Minus,
   Edit,
-  Receipt,
-  X,
   ChevronRight,
-  AlertCircle
+  GripVertical
 } from 'lucide-react';
 
 export default function CartSidebar() {
-  const { cart, cartItems, isLoading, cartSummary, updateItem, removeItem, finalizeCurrentCart } = useCart();
+  const { cart, cartItems, isLoading, cartSummary, updateItemQuantity, updateItemMarkup, removeItem } = useCart();
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editMarkup, setEditMarkup] = useState<number>(0);
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isSaveQuoteDialogOpen, setIsSaveQuoteDialogOpen] = useState(false);
+  const [cartWidth, setCartWidth] = useState(400);
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+
+  // Resizing functionality
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    
+    const startX = e.clientX;
+    const startWidth = cartWidth;
+    
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = startX - e.clientX;
+      const newWidth = Math.min(Math.max(startWidth + deltaX, 300), 800);
+      setCartWidth(newWidth);
+    };
+    
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [cartWidth]);
 
   const handleEditMarkup = (itemId: string, currentMarkup: number) => {
     setEditingItemId(itemId);
@@ -46,7 +67,7 @@ export default function CartSidebar() {
   const handleSaveMarkup = async () => {
     if (editingItemId) {
       try {
-        await updateItem(editingItemId, editMarkup);
+        await updateItemMarkup(editingItemId, editMarkup);
         setEditingItemId(null);
         toast.success('Markup updated successfully');
       } catch (error) {
@@ -60,14 +81,15 @@ export default function CartSidebar() {
     setEditMarkup(0);
   };
 
-  const handleFinalizeCart = () => {
-    setIsSaveQuoteDialogOpen(true);
-  };
-
-  const handleSaveQuote = async (quoteName: string, notes: string) => {
-    // For now, just finalize the cart - in the future this would save to a quotes table
-    await finalizeCurrentCart();
-    // TODO: Implement quote saving to database with quoteName and notes
+  const handleQuantityChange = async (itemId: string, newQuantity: number) => {
+    if (newQuantity >= 1) {
+      try {
+        await updateItemQuantity(itemId, newQuantity);
+        toast.success('Quantity updated');
+      } catch (error) {
+        toast.error('Failed to update quantity');
+      }
+    }
   };
 
   const handleExportPDF = () => {
@@ -78,7 +100,7 @@ export default function CartSidebar() {
         name: item.details?.name || 'Unknown Item',
         description: item.details?.description,
         type: item.item_type as 'meal' | 'packet',
-        quantity: 1, // Cart items don't have quantity - each row is one item
+        quantity: item.quantity,
         basePrice: item.netPrice / (1 + item.markup_pct / 100), // Calculate base price from net price
         markupPct: item.markup_pct,
         netPrice: item.netPrice,
@@ -90,7 +112,7 @@ export default function CartSidebar() {
         nettoTotal: cartSummary.nettoTotal,
         avgMarkupPct: cartSummary.avgMarkupPct,
         bruttoTotal: cartSummary.bruttoTotal,
-        itemCount: cartItems.length
+        itemCount: cartItems.reduce((sum, item) => sum + item.quantity, 0)
       };
 
       // Generate and download PDF
@@ -109,16 +131,30 @@ export default function CartSidebar() {
 
   return (
     <motion.aside
+      ref={sidebarRef}
       initial={{ x: 100, opacity: 0 }}
       animate={{ 
         x: 0, 
         opacity: 1,
-        width: isCollapsed ? '60px' : '400px'
+        width: isCollapsed ? '60px' : `${cartWidth}px`
       }}
       transition={{ duration: 0.3 }}
-      className="sticky top-0 h-screen border-l bg-card/50 backdrop-blur-sm overflow-hidden"
+      className="sticky top-0 h-screen border-l bg-card/50 backdrop-blur-sm overflow-hidden relative"
+      style={{ width: isCollapsed ? '60px' : `${cartWidth}px` }}
     >
-      <div className="flex flex-col h-full">
+      {/* Resize Handle */}
+      {!isCollapsed && (
+        <div
+          className="absolute left-0 top-0 w-2 h-full cursor-col-resize z-10 group hover:bg-primary/20 transition-colors"
+          onMouseDown={handleMouseDown}
+        >
+          <div className="absolute left-0 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <GripVertical className="h-4 w-4 text-muted-foreground" />
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col h-full pl-2">
         {/* Header */}
         <div className="p-4 border-b">
           <div className="flex items-center justify-between">
@@ -133,7 +169,7 @@ export default function CartSidebar() {
                   <span>Shopping Cart</span>
                 </h2>
                 <p className="text-sm text-muted-foreground">
-                  {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'}
+                  {cartItems.reduce((sum, item) => sum + item.quantity, 0)} items
                 </p>
               </motion.div>
             )}
@@ -163,12 +199,12 @@ export default function CartSidebar() {
               <TooltipTrigger asChild>
                 <div className="flex items-center justify-center p-3 rounded-lg bg-muted/50 cursor-pointer">
                   <Badge variant="secondary" className="h-6 w-6 rounded-full p-0 flex items-center justify-center">
-                    {cartItems.length}
+                    {cartItems.reduce((sum, item) => sum + item.quantity, 0)}
                   </Badge>
                 </div>
               </TooltipTrigger>
               <TooltipContent side="left">
-                <p>{cartItems.length} items in cart</p>
+                <p>{cartItems.reduce((sum, item) => sum + item.quantity, 0)} items in cart</p>
               </TooltipContent>
             </Tooltip>
             
@@ -179,13 +215,13 @@ export default function CartSidebar() {
                     variant="default"
                     size="sm"
                     className="w-full h-8 p-0"
-                    onClick={handleFinalizeCart}
+                    onClick={handleExportPDF}
                   >
-                    <Receipt className="h-4 w-4" />
+                    <Download className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="left">
-                  <p>Finalize cart (€{cartSummary.bruttoTotal.toFixed(2)})</p>
+                  <p>Export PDF (€{cartSummary.bruttoTotal.toFixed(2)})</p>
                 </TooltipContent>
               </Tooltip>
             )}
@@ -196,7 +232,7 @@ export default function CartSidebar() {
         {!isCollapsed && (
           <>
             {/* Cart Items */}
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 p-4" style={{ width: `${cartWidth - 8}px` }}>
               {isLoading ? (
                 <div className="space-y-3">
                   {[...Array(3)].map((_, i) => (
@@ -231,10 +267,10 @@ export default function CartSidebar() {
                         transition={{ delay: index * 0.1 }}
                         className="group"
                       >
-                        <Card className="p-3 transition-all hover:shadow-md">
+                        <Card className="p-3 transition-all hover:shadow-md" style={{ width: '100%' }}>
                           <div className="flex items-start justify-between">
-                            <div className="flex items-start space-x-3 flex-1">
-                              <div className="p-2 rounded-lg bg-muted/50">
+                            <div className="flex items-start space-x-3 flex-1 min-w-0">
+                              <div className="p-2 rounded-lg bg-muted/50 flex-shrink-0">
                                 {item.item_type === 'meal' ? (
                                   <Utensils className="h-4 w-4 text-blue-600" />
                                 ) : (
@@ -249,6 +285,33 @@ export default function CartSidebar() {
                                 <p className="text-xs text-muted-foreground truncate">
                                   {item.details?.description || `${item.item_type}`}
                                 </p>
+                                
+                                {/* Quantity Controls */}
+                                <div className="mt-2 flex items-center space-x-2">
+                                  <Label className="text-xs">Qty:</Label>
+                                  <div className="flex items-center space-x-1">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
+                                      disabled={item.quantity <= 1}
+                                    >
+                                      <Minus className="h-3 w-3" />
+                                    </Button>
+                                    <span className="text-sm font-medium min-w-[20px] text-center">
+                                      {item.quantity}
+                                    </span>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-6 w-6 p-0"
+                                      onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
                                 
                                 {editingItemId === item.id ? (
                                   <div className="mt-2 space-y-2">
@@ -283,10 +346,10 @@ export default function CartSidebar() {
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="mt-1 flex items-center justify-between">
+                                  <div className="mt-1 flex flex-wrap items-center gap-2">
                                     <div className="text-xs space-y-1">
                                       <div className="flex items-center space-x-2">
-                                        <span className="text-muted-foreground">Net:</span>
+                                        <span className="text-muted-foreground">Unit:</span>
                                         <span className="font-medium">€{item.netPrice.toFixed(2)}</span>
                                       </div>
                                       <div className="flex items-center space-x-2">
@@ -296,8 +359,10 @@ export default function CartSidebar() {
                                         </Badge>
                                       </div>
                                       <div className="flex items-center space-x-2">
-                                        <span className="text-muted-foreground">Gross:</span>
-                                        <span className="font-semibold text-green-600">€{item.grossPrice.toFixed(2)}</span>
+                                        <span className="text-muted-foreground">Total:</span>
+                                        <span className="font-semibold text-green-600">
+                                          €{(item.grossPrice * item.quantity).toFixed(2)}
+                                        </span>
                                       </div>
                                     </div>
                                   </div>
@@ -305,7 +370,7 @@ export default function CartSidebar() {
                               </div>
                             </div>
                             
-                            <div className="flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex flex-col space-y-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-2">
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <Button
@@ -353,6 +418,7 @@ export default function CartSidebar() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="p-4 border-t space-y-4"
+                style={{ width: `${cartWidth - 8}px` }}
               >
                 <Card className="p-3 bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20">
                   <div className="space-y-2 text-sm">
@@ -375,20 +441,14 @@ export default function CartSidebar() {
                 </Card>
 
                 <div className="space-y-2">
-                  <Button className="w-full" onClick={handleFinalizeCart} disabled={isLoading}>
-                    <Receipt className="h-4 w-4 mr-2" />
-                    Save Quote
-                  </Button>
-                  
                   <Button 
-                    variant="outline" 
+                    variant="default" 
                     className="w-full" 
-                    size="sm"
                     onClick={handleExportPDF}
                     disabled={isLoading}
                   >
                     <Download className="h-4 w-4 mr-2" />
-                    Export PDF
+                    Export PDF Quote
                   </Button>
                 </div>
               </motion.div>
@@ -396,14 +456,6 @@ export default function CartSidebar() {
           </>
         )}
       </div>
-      
-      <SaveQuoteDialog
-        open={isSaveQuoteDialogOpen}
-        onOpenChange={setIsSaveQuoteDialogOpen}
-        cartSummary={cartSummary}
-        itemCount={cartItems.length}
-        onSaveQuote={handleSaveQuote}
-      />
     </motion.aside>
   );
 } 

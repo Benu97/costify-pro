@@ -50,7 +50,7 @@ export const createIngredient = withAuth(async (formData: IngredientFormValues) 
     throw new Error(`Failed to create ingredient: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/ingredients');
+  revalidatePath('/');
   return { success: true, data };
 });
 
@@ -79,7 +79,7 @@ export const updateIngredient = withAuth(async (formData: IngredientFormValues) 
     throw new Error(`Failed to update ingredient: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/ingredients');
+  revalidatePath('/');
   return { success: true, data };
 });
 
@@ -95,6 +95,6 @@ export const deleteIngredient = withAuth(async (id: string) => {
     throw new Error(`Failed to delete ingredient: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/ingredients');
+  revalidatePath('/');
   return { success: true };
 });

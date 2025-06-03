@@ -49,7 +49,7 @@ export const createPacket = withAuth(async (formData: PacketFormValues) => {
     throw new Error(`Failed to create packet: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/packets');
+  revalidatePath('/');
   return { success: true, data };
 });
 
@@ -77,7 +77,7 @@ export const updatePacket = withAuth(async (formData: PacketFormValues) => {
     throw new Error(`Failed to update packet: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/packets');
+  revalidatePath('/');
   return { success: true, data };
 });
 
@@ -93,7 +93,7 @@ export const deletePacket = withAuth(async (id: string) => {
     throw new Error(`Failed to delete packet: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/packets');
+  revalidatePath('/');
   return { success: true };
 });
 
@@ -157,7 +157,7 @@ export const addPacketMeal = withAuth(async (packetId: string, mealId: string, q
     throw new Error(`Failed to add meal to packet: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/packets');
+  revalidatePath('/');
   return { success: true, data };
 });
 
@@ -176,7 +176,7 @@ export const updatePacketMeal = withAuth(async (packetId: string, mealId: string
     throw new Error(`Failed to update meal quantity: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/packets');
+  revalidatePath('/');
   return { success: true, data };
 });
 
@@ -193,6 +193,6 @@ export const removePacketMeal = withAuth(async (packetId: string, mealId: string
     throw new Error(`Failed to remove meal from packet: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/packets');
+  revalidatePath('/');
   return { success: true };
 });

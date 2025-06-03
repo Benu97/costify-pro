@@ -14,10 +14,17 @@ import { useCart } from '@/app/providers/cart-provider';
 import { searchItems } from '@/app/actions/cart';
 import LogoutButton from '@/app/components/LogoutButton';
 import CartSidebar from '@/app/components/cart-sidebar';
+import { AddToCartDialog } from '@/app/components/add-to-cart-dialog';
 import { IngredientEditDialog } from '@/app/dashboard/ingredients/components/ingredient-edit-dialog';
 import { IngredientFormDialog } from '@/app/dashboard/ingredients/components/ingredient-form-dialog';
+import { MealFormDialog } from '@/app/dashboard/meals/components/meal-form-dialog';
+import { MealDetailsDialog } from '@/app/dashboard/meals/components/meal-details-dialog';
+import { PacketFormDialog } from '@/app/dashboard/packets/components/packet-form-dialog';
+import { PacketDetailsDialog } from '@/app/dashboard/packets/components/packet-details-dialog';
 import { createIngredient, deleteIngredient, updateIngredient } from '@/app/actions/ingredients';
-import { IngredientFormValues } from '@/app/lib/validation-schemas';
+import { createMeal, deleteMeal, updateMeal } from '@/app/actions/meals';
+import { createPacket, deletePacket, updatePacket } from '@/app/actions/packets';
+import { IngredientFormValues, MealFormValues, PacketFormValues } from '@/app/lib/validation-schemas';
 import { 
   Package, 
   ShoppingCart, 
@@ -52,14 +59,20 @@ interface Meal {
   id: string;
   name: string;
   description: string | null;
+  price_net_override: number | null;
   created_at: string;
+  updated_at: string;
+  owner_id: string;
 }
 
 interface Packet {
   id: string;
   name: string;
   description: string | null;
+  price_net_override: number | null;
   created_at: string;
+  updated_at: string;
+  owner_id: string;
 }
 
 interface NewDashboardProps {
@@ -77,16 +90,38 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
   
   // Ingredient management state
   const [localIngredients, setLocalIngredients] = useState<Ingredient[]>(ingredients || []);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isAddIngredientDialogOpen, setIsAddIngredientDialogOpen] = useState(false);
+  const [isEditIngredientDialogOpen, setIsEditIngredientDialogOpen] = useState(false);
   const [currentIngredient, setCurrentIngredient] = useState<Ingredient | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isIngredientSubmitting, setIsIngredientSubmitting] = useState(false);
+
+  // Meal management state
+  const [localMeals, setLocalMeals] = useState<Meal[]>(meals || []);
+  const [isAddMealDialogOpen, setIsAddMealDialogOpen] = useState(false);
+  const [isEditMealDialogOpen, setIsEditMealDialogOpen] = useState(false);
+  const [isMealDetailsDialogOpen, setIsMealDetailsDialogOpen] = useState(false);
+  const [currentMeal, setCurrentMeal] = useState<Meal | null>(null);
+  const [currentMealId, setCurrentMealId] = useState<string | null>(null);
+  const [isMealSubmitting, setIsMealSubmitting] = useState(false);
+
+  // Packet management state
+  const [localPackets, setLocalPackets] = useState<Packet[]>(packets || []);
+  const [isAddPacketDialogOpen, setIsAddPacketDialogOpen] = useState(false);
+  const [isEditPacketDialogOpen, setIsEditPacketDialogOpen] = useState(false);
+  const [isPacketDetailsDialogOpen, setIsPacketDetailsDialogOpen] = useState(false);
+  const [currentPacket, setCurrentPacket] = useState<Packet | null>(null);
+  const [currentPacketId, setCurrentPacketId] = useState<string | null>(null);
+  const [isPacketSubmitting, setIsPacketSubmitting] = useState(false);
+
+  // Add to cart state
+  const [isAddToCartDialogOpen, setIsAddToCartDialogOpen] = useState(false);
+  const [cartItemToAdd, setCartItemToAdd] = useState<{ item: Meal | Packet; type: 'meal' | 'packet' } | null>(null);
 
   // Safety check to prevent undefined errors
   const safeCartItems = cartItems || [];
   const safeIngredients = localIngredients || [];
-  const safeMeals = meals || [];
-  const safePackets = packets || [];
+  const safeMeals = localMeals || [];
+  const safePackets = localPackets || [];
 
   const filteredIngredients = safeIngredients.filter(item => 
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -108,40 +143,44 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
     ingredients: safeIngredients.length,
     meals: safeMeals.length,
     packets: safePackets.length,
-    cartItems: safeCartItems.length
+    cartItems: safeCartItems.reduce((sum, item) => sum + item.quantity, 0)
   };
 
-  const handleAddToCart = async (item: Meal | Packet, type: 'meal' | 'packet') => {
+  const handleAddToCart = (item: Meal | Packet, type: 'meal' | 'packet') => {
+    setCartItemToAdd({ item, type });
+    setIsAddToCartDialogOpen(true);
+  };
+
+  const handleAddToCartConfirm = async (itemId: string, itemType: 'meal' | 'packet', quantity: number, markupPct: number) => {
     try {
-      await addItem(type, item.id, 20); // Default 20% markup
-      toast.success(`Added ${item.name} to cart`, {
-        description: `${type} added with 20% markup`
-      });
+      await addItem(itemType, itemId, quantity, markupPct);
+      setIsAddToCartDialogOpen(false);
+      setCartItemToAdd(null);
+      // Toast success will be handled by the AddToCartDialog component
     } catch (error) {
       console.error('Error adding to cart:', error);
-      toast.error('Failed to add item to cart', {
-        description: 'Please try again'
-      });
+      // Toast error will be handled by the AddToCartDialog component
+      throw error; // Re-throw to let the dialog handle it
     }
   };
 
   // Ingredient management handlers
   const handleAddIngredient = () => {
-    setIsAddDialogOpen(true);
+    setIsAddIngredientDialogOpen(true);
   };
 
   const handleEditIngredient = (ingredient: Ingredient) => {
     setCurrentIngredient(ingredient);
-    setIsEditDialogOpen(true);
+    setIsEditIngredientDialogOpen(true);
   };
 
   const handleCreateIngredient = async (data: IngredientFormValues) => {
-    setIsSubmitting(true);
+    setIsIngredientSubmitting(true);
     try {
       const result = await createIngredient(data);
       if (result.success && result.data) {
         setLocalIngredients([...localIngredients, result.data as Ingredient]);
-        setIsAddDialogOpen(false);
+        setIsAddIngredientDialogOpen(false);
         toast.success('Ingredient created successfully', {
           description: `${data.name} has been added to your inventory`
         });
@@ -152,14 +191,14 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
         description: 'Please try again or check your input'
       });
     } finally {
-      setIsSubmitting(false);
+      setIsIngredientSubmitting(false);
     }
   };
 
   const handleUpdateIngredient = async (data: IngredientFormValues) => {
     if (!data.id) return;
     
-    setIsSubmitting(true);
+    setIsIngredientSubmitting(true);
     try {
       const result = await updateIngredient(data);
       if (result.success && result.data) {
@@ -168,7 +207,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
             item.id === data.id ? result.data as Ingredient : item
           )
         );
-        setIsEditDialogOpen(false);
+        setIsEditIngredientDialogOpen(false);
         toast.success('Ingredient updated successfully', {
           description: `${data.name} has been updated`
         });
@@ -179,21 +218,21 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
         description: 'Please try again or check your input'
       });
     } finally {
-      setIsSubmitting(false);
+      setIsIngredientSubmitting(false);
     }
   };
 
   const handleDeleteIngredient = async () => {
     if (!currentIngredient) return;
     
-    setIsSubmitting(true);
+    setIsIngredientSubmitting(true);
     try {
       const result = await deleteIngredient(currentIngredient.id);
       if (result.success) {
         setLocalIngredients(
           localIngredients.filter((item) => item.id !== currentIngredient.id)
         );
-        setIsEditDialogOpen(false);
+        setIsEditIngredientDialogOpen(false);
         toast.success('Ingredient deleted successfully', {
           description: `${currentIngredient.name} has been removed from your inventory`
         });
@@ -204,7 +243,177 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
         description: 'Please try again'
       });
     } finally {
-      setIsSubmitting(false);
+      setIsIngredientSubmitting(false);
+    }
+  };
+
+  // Meal management handlers
+  const handleAddMeal = () => {
+    setIsAddMealDialogOpen(true);
+  };
+
+  const handleEditMeal = (meal: Meal) => {
+    setCurrentMeal(meal);
+    setIsEditMealDialogOpen(true);
+  };
+
+  const handleViewMealDetails = (meal: Meal) => {
+    setCurrentMealId(meal.id);
+    setIsMealDetailsDialogOpen(true);
+  };
+
+  const handleCreateMeal = async (data: MealFormValues) => {
+    setIsMealSubmitting(true);
+    try {
+      const result = await createMeal(data);
+      if (result.success && result.data) {
+        setLocalMeals([...localMeals, result.data as Meal]);
+        setIsAddMealDialogOpen(false);
+        toast.success('Meal created successfully', {
+          description: `${data.name} has been added to your menu`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create meal:', error);
+      toast.error('Failed to create meal', {
+        description: 'Please try again or check your input'
+      });
+    } finally {
+      setIsMealSubmitting(false);
+    }
+  };
+
+  const handleUpdateMeal = async (data: MealFormValues) => {
+    if (!data.id) return;
+    
+    setIsMealSubmitting(true);
+    try {
+      const result = await updateMeal(data);
+      if (result.success && result.data) {
+        setLocalMeals(
+          localMeals.map((item) => 
+            item.id === data.id ? result.data as Meal : item
+          )
+        );
+        setIsEditMealDialogOpen(false);
+        toast.success('Meal updated successfully', {
+          description: `${data.name} has been updated`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update meal:', error);
+      toast.error('Failed to update meal', {
+        description: 'Please try again or check your input'
+      });
+    } finally {
+      setIsMealSubmitting(false);
+    }
+  };
+
+  const handleDeleteMeal = async (meal: Meal) => {
+    setIsMealSubmitting(true);
+    try {
+      const result = await deleteMeal(meal.id);
+      if (result.success) {
+        setLocalMeals(
+          localMeals.filter((item) => item.id !== meal.id)
+        );
+        toast.success('Meal deleted successfully', {
+          description: `${meal.name} has been removed from your menu`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete meal:', error);
+      toast.error('Failed to delete meal', {
+        description: 'Please try again'
+      });
+    } finally {
+      setIsMealSubmitting(false);
+    }
+  };
+
+  // Packet management handlers
+  const handleAddPacket = () => {
+    setIsAddPacketDialogOpen(true);
+  };
+
+  const handleEditPacket = (packet: Packet) => {
+    setCurrentPacket(packet);
+    setIsEditPacketDialogOpen(true);
+  };
+
+  const handleViewPacketDetails = (packet: Packet) => {
+    setCurrentPacketId(packet.id);
+    setIsPacketDetailsDialogOpen(true);
+  };
+
+  const handleCreatePacket = async (data: PacketFormValues) => {
+    setIsPacketSubmitting(true);
+    try {
+      const result = await createPacket(data);
+      if (result.success && result.data) {
+        setLocalPackets([...localPackets, result.data as Packet]);
+        setIsAddPacketDialogOpen(false);
+        toast.success('Packet created successfully', {
+          description: `${data.name} has been added to your packages`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create packet:', error);
+      toast.error('Failed to create packet', {
+        description: 'Please try again or check your input'
+      });
+    } finally {
+      setIsPacketSubmitting(false);
+    }
+  };
+
+  const handleUpdatePacket = async (data: PacketFormValues) => {
+    if (!data.id) return;
+    
+    setIsPacketSubmitting(true);
+    try {
+      const result = await updatePacket(data);
+      if (result.success && result.data) {
+        setLocalPackets(
+          localPackets.map((item) => 
+            item.id === data.id ? result.data as Packet : item
+          )
+        );
+        setIsEditPacketDialogOpen(false);
+        toast.success('Packet updated successfully', {
+          description: `${data.name} has been updated`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update packet:', error);
+      toast.error('Failed to update packet', {
+        description: 'Please try again or check your input'
+      });
+    } finally {
+      setIsPacketSubmitting(false);
+    }
+  };
+
+  const handleDeletePacket = async (packet: Packet) => {
+    setIsPacketSubmitting(true);
+    try {
+      const result = await deletePacket(packet.id);
+      if (result.success) {
+        setLocalPackets(
+          localPackets.filter((item) => item.id !== packet.id)
+        );
+        toast.success('Packet deleted successfully', {
+          description: `${packet.name} has been removed from your packages`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete packet:', error);
+      toast.error('Failed to delete packet', {
+        description: 'Please try again'
+      });
+    } finally {
+      setIsPacketSubmitting(false);
     }
   };
 
@@ -401,7 +610,11 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                 <TabsContent value="meals" className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold">Meals</h2>
-                    <Button size="sm" className="flex items-center space-x-2">
+                    <Button 
+                      size="sm" 
+                      className="flex items-center space-x-2"
+                      onClick={handleAddMeal}
+                    >
                       <Plus className="h-4 w-4" />
                       <span>Create Meal</span>
                     </Button>
@@ -445,12 +658,32 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                                   </Tooltip>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-8 w-8 p-0"
+                                        onClick={() => handleViewMealDetails(meal)}
+                                      >
                                         <Eye className="h-4 w-4" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                       <p>View details</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-8 w-8 p-0"
+                                        onClick={() => handleEditMeal(meal)}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Edit meal</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
@@ -481,7 +714,11 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                 <TabsContent value="packets" className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold">Packets</h2>
-                    <Button size="sm" className="flex items-center space-x-2">
+                    <Button 
+                      size="sm" 
+                      className="flex items-center space-x-2"
+                      onClick={handleAddPacket}
+                    >
                       <Plus className="h-4 w-4" />
                       <span>Create Packet</span>
                     </Button>
@@ -525,12 +762,32 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                                   </Tooltip>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-8 w-8 p-0"
+                                        onClick={() => handleViewPacketDetails(packet)}
+                                      >
                                         <Eye className="h-4 w-4" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
                                       <p>View details</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-8 w-8 p-0"
+                                        onClick={() => handleEditPacket(packet)}
+                                      >
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Edit packet</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
@@ -564,25 +821,100 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
           <CartSidebar />
         </div>
         
+        {/* Add to Cart Dialog */}
+        <AddToCartDialog
+          open={isAddToCartDialogOpen}
+          onOpenChange={setIsAddToCartDialogOpen}
+          item={cartItemToAdd?.item || null}
+          itemType={cartItemToAdd?.type || null}
+          onAddToCart={handleAddToCartConfirm}
+        />
+        
         {/* Ingredient Management Dialogs */}
         <IngredientFormDialog
-          open={isAddDialogOpen}
-          onOpenChange={setIsAddDialogOpen}
+          open={isAddIngredientDialogOpen}
+          onOpenChange={setIsAddIngredientDialogOpen}
           onSubmit={handleCreateIngredient}
-          isSubmitting={isSubmitting}
+          isSubmitting={isIngredientSubmitting}
           title="Add New Ingredient"
         />
 
         {currentIngredient && (
           <IngredientEditDialog
-            open={isEditDialogOpen}
-            onOpenChange={setIsEditDialogOpen}
+            open={isEditIngredientDialogOpen}
+            onOpenChange={setIsEditIngredientDialogOpen}
             ingredient={currentIngredient}
             onSave={handleUpdateIngredient}
             onDelete={handleDeleteIngredient}
-            isSubmitting={isSubmitting}
+            isSubmitting={isIngredientSubmitting}
           />
         )}
+
+        {/* Meal Management Dialogs */}
+        <MealFormDialog
+          open={isAddMealDialogOpen}
+          onOpenChange={setIsAddMealDialogOpen}
+          onSubmit={handleCreateMeal}
+          isSubmitting={isMealSubmitting}
+          title="Create New Meal"
+        />
+
+        {currentMeal && (
+          <MealFormDialog
+            open={isEditMealDialogOpen}
+            onOpenChange={setIsEditMealDialogOpen}
+            onSubmit={handleUpdateMeal}
+            defaultValues={currentMeal}
+            isSubmitting={isMealSubmitting}
+            title="Edit Meal"
+          />
+        )}
+
+        <MealDetailsDialog
+          open={isMealDetailsDialogOpen}
+          onOpenChange={setIsMealDetailsDialogOpen}
+          mealId={currentMealId}
+          onMealUpdated={(updatedMeal) => {
+            setLocalMeals(
+              localMeals.map((meal) => 
+                meal.id === updatedMeal.id ? updatedMeal as Meal : meal
+              )
+            );
+          }}
+        />
+
+        {/* Packet Management Dialogs */}
+        <PacketFormDialog
+          open={isAddPacketDialogOpen}
+          onOpenChange={setIsAddPacketDialogOpen}
+          onSubmit={handleCreatePacket}
+          isSubmitting={isPacketSubmitting}
+          title="Create New Packet"
+        />
+
+        {currentPacket && (
+          <PacketFormDialog
+            open={isEditPacketDialogOpen}
+            onOpenChange={setIsEditPacketDialogOpen}
+            onSubmit={handleUpdatePacket}
+            defaultValues={currentPacket}
+            isSubmitting={isPacketSubmitting}
+            title="Edit Packet"
+          />
+        )}
+
+        <PacketDetailsDialog
+          open={isPacketDetailsDialogOpen}
+          onOpenChange={setIsPacketDetailsDialogOpen}
+          packetId={currentPacketId}
+          onPacketUpdated={(updatedPacket) => {
+            setLocalPackets(
+              localPackets.map((packet) => 
+                packet.id === updatedPacket.id ? updatedPacket as Packet : packet
+              )
+            );
+          }}
+        />
       </TooltipProvider>
     </div>
   );

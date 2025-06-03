@@ -49,7 +49,7 @@ export const createMeal = withAuth(async (formData: MealFormValues) => {
     throw new Error(`Failed to create meal: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/meals');
+  revalidatePath('/');
   return { success: true, data };
 });
 
@@ -77,7 +77,7 @@ export const updateMeal = withAuth(async (formData: MealFormValues) => {
     throw new Error(`Failed to update meal: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/meals');
+  revalidatePath('/');
   return { success: true, data };
 });
 
@@ -93,7 +93,7 @@ export const deleteMeal = withAuth(async (id: string) => {
     throw new Error(`Failed to delete meal: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/meals');
+  revalidatePath('/');
   return { success: true };
 });
 
@@ -158,7 +158,7 @@ export const addMealIngredient = withAuth(async (mealId: string, ingredientId: s
     throw new Error(`Failed to add ingredient to meal: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/meals');
+  revalidatePath('/');
   return { success: true, data };
 });
 
@@ -177,7 +177,7 @@ export const updateMealIngredient = withAuth(async (mealId: string, ingredientId
     throw new Error(`Failed to update ingredient quantity: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/meals');
+  revalidatePath('/');
   return { success: true, data };
 });
 
@@ -194,6 +194,6 @@ export const removeMealIngredient = withAuth(async (mealId: string, ingredientId
     throw new Error(`Failed to remove ingredient from meal: ${error.message}`);
   }
 
-  revalidatePath('/dashboard/meals');
+  revalidatePath('/');
   return { success: true };
 });
