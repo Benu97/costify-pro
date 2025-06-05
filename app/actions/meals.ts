@@ -21,6 +21,61 @@ export async function getMeals() {
   return meals;
 }
 
+// Get all meals with ingredients for dashboard display
+export async function getMealsWithIngredients() {
+  const supabase = createServerClient();
+  
+  // First get all meals
+  const { data: meals, error: mealsError } = await supabase
+    .from('meals')
+    .select('*')
+    .order('name');
+
+  if (mealsError) {
+    console.error('Error fetching meals:', mealsError.message);
+    throw new Error('Failed to fetch meals');
+  }
+
+  // Then get ingredients for each meal
+  const mealsWithIngredients = await Promise.all(
+    meals.map(async (meal) => {
+      const { data: mealIngredients, error: ingredientsError } = await supabase
+        .from('meal_ingredients')
+        .select(`
+          ingredient_id,
+          quantity,
+          ingredients (
+            id,
+            name,
+            unit,
+            price_net,
+            category,
+            created_at,
+            updated_at,
+            owner_id
+          )
+        `)
+        .eq('meal_id', meal.id);
+
+      if (ingredientsError) {
+        console.error(`Error fetching ingredients for meal ${meal.id}:`, ingredientsError.message);
+        // Return meal without ingredients if there's an error
+        return { ...meal, ingredients: [] };
+      }
+
+      return {
+        ...meal,
+        ingredients: mealIngredients.map(mi => ({
+          ...(mi.ingredients as any),
+          quantity: mi.quantity
+        }))
+      };
+    })
+  );
+
+  return mealsWithIngredients;
+}
+
 // Create a new meal
 export const createMeal = withAuth(async (formData: MealFormValues) => {
   const validated = mealSchema.parse(formData);
@@ -122,7 +177,10 @@ export async function getMealWithIngredients(mealId: string) {
         name,
         unit,
         price_net,
-        category
+        category,
+        created_at,
+        updated_at,
+        owner_id
       )
     `)
     .eq('meal_id', mealId);
@@ -196,4 +254,24 @@ export const removeMealIngredient = withAuth(async (mealId: string, ingredientId
 
   revalidatePath('/');
   return { success: true };
+});
+
+// Remove price override from a meal (so it calculates from ingredients)
+export const removeMealPriceOverride = withAuth(async (mealId: string) => {
+  const { data, error } = await supabaseAdmin
+    .from('meals')
+    .update({
+      price_net_override: null
+    })
+    .eq('id', mealId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error removing meal price override:', error.message);
+    throw new Error(`Failed to remove price override: ${error.message}`);
+  }
+
+  revalidatePath('/');
+  return { success: true, data };
 });

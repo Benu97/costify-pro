@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Meal } from '@/app/lib/pricing';
+import { calculateMealPrice } from '@/app/lib/price-utils';
 import { ShoppingCart, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -43,7 +44,8 @@ export function AddToCartDialog({
   if (!meal) return null;
 
   // Calculate base price (from ingredients or override)
-  const basePrice = meal.price_net_override || 0; // TODO: Calculate from ingredients if no override
+  const basePrice = calculateMealPrice(meal); // This will return 0 if no override and no ingredients
+  const hasValidPrice = meal.price_net_override !== null || basePrice > 0;
   
   // Calculate prices with markup
   const markupDecimal = typeof markupPercentage === 'number' ? markupPercentage / 100 : 0;
@@ -169,12 +171,20 @@ export function AddToCartDialog({
           {/* Price Preview */}
           <div className="bg-muted/50 p-4 rounded-lg space-y-2">
             <h4 className="font-medium">Price Calculation</h4>
+            {!hasValidPrice && (
+              <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
+                <p className="text-sm text-yellow-800">
+                  ⚠️ This meal has no price set and no ingredients to calculate from. 
+                  Please add ingredients or set a price override before adding to cart.
+                </p>
+              </div>
+            )}
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
                 <span>Base price per unit:</span>
-                <span>€{basePrice.toFixed(2)}</span>
+                <span>{hasValidPrice ? `€${basePrice.toFixed(2)}` : 'N/A'}</span>
               </div>
-              {typeof markupPercentage === 'number' && (
+              {typeof markupPercentage === 'number' && hasValidPrice && (
                 <>
                   <div className="flex justify-between">
                     <span>With markup ({markupPercentage}%):</span>
@@ -204,7 +214,7 @@ export function AddToCartDialog({
           </Button>
           <Button
             onClick={handleAddToCart}
-            disabled={isSubmitting || markupPercentage === ''}
+            disabled={isSubmitting || markupPercentage === '' || !hasValidPrice}
             className="min-w-[100px]"
           >
             {isSubmitting ? 'Adding...' : 'Add to Cart'}

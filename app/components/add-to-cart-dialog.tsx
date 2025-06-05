@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ShoppingCart, Minus, Plus, Package, Utensils } from 'lucide-react';
+import { calculateMealPrice } from '@/app/lib/price-utils';
 import { toast } from 'sonner';
 
 interface AddToCartDialogProps {
@@ -47,7 +48,10 @@ export function AddToCartDialog({
   if (!item || !itemType) return null;
 
   // Calculate base price (simplified for now)
-  const basePrice = item.price_net_override || 10; // Default price for demo
+  const basePrice = itemType === 'meal' 
+    ? calculateMealPrice(item as any) // Type assertion since we know it's a meal
+    : (item.price_net_override || 0); // For packets, use override or 0
+  const hasValidPrice = basePrice > 0;
   
   // Calculate prices with markup
   const markupDecimal = typeof markupPct === 'number' ? markupPct / 100 : 0;
@@ -182,12 +186,20 @@ export function AddToCartDialog({
           <Card className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20">
             <CardContent className="p-4">
               <h4 className="font-medium mb-3">Price Calculation</h4>
+              {!hasValidPrice && itemType === 'meal' && (
+                <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md mb-3">
+                  <p className="text-sm text-yellow-800">
+                    ⚠️ This meal has no price set and no ingredients to calculate from. 
+                    Please add ingredients or set a price override before adding to cart.
+                  </p>
+                </div>
+              )}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Base price per unit:</span>
-                  <span>€{basePrice.toFixed(2)}</span>
+                  <span>{hasValidPrice ? `€${basePrice.toFixed(2)}` : 'N/A'}</span>
                 </div>
-                {typeof markupPct === 'number' && (
+                {typeof markupPct === 'number' && hasValidPrice && (
                   <>
                     <div className="flex justify-between">
                       <span>With markup ({markupPct}%):</span>
@@ -215,7 +227,7 @@ export function AddToCartDialog({
           </Button>
           <Button
             onClick={handleAddToCart}
-            disabled={isSubmitting || markupPct === ''}
+            disabled={isSubmitting || markupPct === '' || !hasValidPrice}
             className="min-w-[100px]"
           >
             {isSubmitting ? 'Adding...' : 'Add to Cart'}

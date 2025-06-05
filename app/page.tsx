@@ -3,8 +3,8 @@ import { createServerClient } from '@/app/lib/supabase-server';
 import { redirect } from 'next/navigation';
 import NewDashboard from './components/new-dashboard';
 import { getIngredients } from './actions/ingredients';
-import { getMeals } from './actions/meals';
-import { getPackets } from './actions/packets';
+import { getMealsWithIngredients } from './actions/meals';
+import { getPacketsWithMeals } from './actions/packets';
 import { CartProvider } from './providers/cart-provider';
 
 export const dynamic = 'force-dynamic';
@@ -30,8 +30,8 @@ async function DashboardData({ userEmail }: { userEmail: string }) {
   // Fetch all data for the dashboard
   const [ingredients, meals, packets] = await Promise.all([
     getIngredients(),
-    getMeals(),
-    getPackets()
+    getMealsWithIngredients(),
+    getPacketsWithMeals()
   ]);
 
   return (

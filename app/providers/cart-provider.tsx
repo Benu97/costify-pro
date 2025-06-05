@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
-import { Cart, CartItem, calcCartSummary } from '@/app/lib/pricing';
+import { Cart, CartItem, calcCartSummary, calcMealNet, calcPacketNet } from '@/app/lib/pricing';
 import { 
   getCurrentDraftCart, 
   getCartItems, 
@@ -107,7 +107,35 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         
         (items || []).forEach((item: any) => {
           const key = `${item.item_id}_${item.markup_pct}`;
-          const netPrice = item.details?.price_net_override || 10; // Default price for demo
+          
+          // Calculate prices based on item type and details
+          let netPrice = 0;
+          
+          if (item.item_type === 'meal') {
+            // For meals, calculate from ingredients or use override
+            const mealDetails = item.details;
+            if (mealDetails?.price_net_override !== null && mealDetails?.price_net_override !== undefined) {
+              netPrice = mealDetails.price_net_override;
+            } else if (mealDetails?.meal_ingredients) {
+              // Transform meal ingredients to expected format
+              const ingredients = mealDetails.meal_ingredients.map((mi: any) => ({
+                ...mi.ingredients,
+                quantity: mi.quantity
+              }));
+              netPrice = calcMealNet(mealDetails, ingredients);
+            }
+          } else if (item.item_type === 'packet') {
+            // For packets, calculate from meals or use override
+            const packetDetails = item.details;
+            if (packetDetails?.price_net_override !== null && packetDetails?.price_net_override !== undefined) {
+              netPrice = packetDetails.price_net_override;
+            } else if (packetDetails?.packet_meals) {
+              // For packets, would need to implement packet price calculation
+              // For now, fallback to 0 if no override
+              netPrice = 0;
+            }
+          }
+          
           const grossPrice = netPrice * (1 + (item.markup_pct || 0) / 100);
           
           if (groupedItems.has(key)) {
@@ -159,7 +187,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try {
       // Optimistic update - add to UI immediately
       const tempId = `temp_${Date.now()}`;
-      const netPrice = 10; // This should be calculated properly
+      // For optimistic updates, we'll use a placeholder price since we don't have item details yet
+      // The real price will be calculated after the API call when we refresh
+      const netPrice = 0; // Placeholder - will be updated after refresh
       const grossPrice = netPrice * (1 + markupPct / 100);
       
       const optimisticItem: DetailedCartItem = {

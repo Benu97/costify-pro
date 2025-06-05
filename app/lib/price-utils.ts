@@ -22,6 +22,26 @@ export function calculateMealPrice(meal: Meal, ingredients?: IngredientWithQuant
 }
 
 /**
+ * Gets a display-friendly price string for a meal
+ * Shows override price, calculated price, or a helpful message
+ */
+export function getMealPriceDisplay(meal: Meal, ingredients?: IngredientWithQuantity[]): string {
+  // If there's an override price, use it
+  if (meal.price_net_override !== null && meal.price_net_override !== undefined) {
+    return `€${meal.price_net_override.toFixed(2)}`;
+  }
+  
+  // If ingredients are provided, calculate from them
+  if (ingredients && ingredients.length > 0) {
+    const calculatedPrice = calcMealNet(meal, ingredients);
+    return `€${calculatedPrice.toFixed(2)}`;
+  }
+  
+  // No price available
+  return 'Add ingredients';
+}
+
+/**
  * Calculates the display price for a packet
  * Uses override price if available, otherwise calculates from meals
  * For demo purposes, returns a default price if meals are not available
@@ -40,6 +60,26 @@ export function calculatePacketPrice(packet: Packet, meals?: Array<MealWithIngre
   // For demo purposes, return a default price
   // In a real app, you'd fetch the meals for this packet
   return 0;
+}
+
+/**
+ * Gets a display-friendly price string for a packet
+ * Shows override price, calculated price, or a helpful message
+ */
+export function getPacketPriceDisplay(packet: Packet, meals?: Array<MealWithIngredients & { quantity: number }>): string {
+  // If there's an override price, use it
+  if (packet.price_net_override !== null && packet.price_net_override !== undefined) {
+    return `€${packet.price_net_override.toFixed(2)}`;
+  }
+  
+  // If meals are provided, calculate from them
+  if (meals && meals.length > 0) {
+    const calculatedPrice = calcPacketNet(packet, meals);
+    return `€${calculatedPrice.toFixed(2)}`;
+  }
+  
+  // No price available
+  return 'Add meals';
 }
 
 /**

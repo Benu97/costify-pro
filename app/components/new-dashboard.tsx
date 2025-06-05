@@ -43,6 +43,8 @@ import {
   MoreHorizontal,
   Edit
 } from 'lucide-react';
+import { getMealPriceDisplay, getPacketPriceDisplay } from '@/app/lib/price-utils';
+import { IngredientWithQuantity } from '@/app/lib/pricing';
 
 interface Ingredient {
   id: string;
@@ -63,6 +65,19 @@ interface Meal {
   created_at: string;
   updated_at: string;
   owner_id: string;
+  ingredients?: IngredientWithQuantity[];
+}
+
+interface MealWithQuantity {
+  id: string;
+  name: string;
+  description: string | null;
+  price_net_override: number | null;
+  created_at: string;
+  updated_at: string;
+  owner_id: string;
+  quantity: number;
+  ingredients: IngredientWithQuantity[];
 }
 
 interface Packet {
@@ -73,6 +88,7 @@ interface Packet {
   created_at: string;
   updated_at: string;
   owner_id: string;
+  meals?: MealWithQuantity[];
 }
 
 interface NewDashboardProps {
@@ -661,7 +677,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                             <CardContent className="pt-0">
                               <div className="flex items-center justify-between">
                                 <div className="text-lg font-semibold text-blue-600">
-                                  {meal.price_net_override ? `€${meal.price_net_override.toFixed(2)}` : 'Price TBD'}
+                                  {getMealPriceDisplay(meal, meal.ingredients)}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
                                   per meal
@@ -735,22 +751,10 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                                         variant="ghost" 
                                         size="sm" 
                                         className="h-9 w-9 p-0 hover:bg-purple-100 hover:text-purple-700"
-                                        onClick={() => handleViewPacketDetails(packet)}
-                                      >
-                                        <Eye className="h-5 w-5" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>View details</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="h-9 w-9 p-0 hover:bg-purple-100 hover:text-purple-700"
-                                        onClick={() => handleEditPacket(packet)}
+                                        onClick={() => {
+                                          setCurrentPacketId(packet.id);
+                                          setIsPacketDetailsDialogOpen(true);
+                                        }}
                                       >
                                         <Edit className="h-5 w-5" />
                                       </Button>
@@ -761,19 +765,15 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                                   </Tooltip>
                                 </div>
                               </div>
-                              {packet.description && (
-                                <CardDescription className="text-sm line-clamp-2">
-                                  {packet.description}
-                                </CardDescription>
-                              )}
                             </CardHeader>
-                            <CardContent>
-                              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                <div className="flex items-center space-x-1">
-                                  <Clock className="h-3 w-3" />
-                                  <span>Created {new Date(packet.created_at).toLocaleDateString()}</span>
+                            <CardContent className="pt-0">
+                              <div className="flex items-center justify-between">
+                                <div className="text-lg font-semibold text-purple-600">
+                                  {getPacketPriceDisplay(packet, packet.meals)}
                                 </div>
-                                <Package className="h-4 w-4 text-purple-500" />
+                                <div className="text-xs text-muted-foreground">
+                                  per packet
+                                </div>
                               </div>
                             </CardContent>
                           </Card>

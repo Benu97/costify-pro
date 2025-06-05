@@ -21,6 +21,61 @@ export async function getPackets() {
   return packets;
 }
 
+// Get all packets with their meals and ingredients for price calculation
+export async function getPacketsWithMeals() {
+  const supabase = createServerClient();
+  
+  const { data: packets, error: packetsError } = await supabase
+    .from('packets')
+    .select(`
+      *,
+      packet_meals (
+        quantity,
+        meals (
+          id,
+          name,
+          description,
+          price_net_override,
+          created_at,
+          updated_at,
+          owner_id,
+          meal_ingredients (
+            quantity,
+            ingredients (
+              id,
+              name,
+              unit,
+              price_net,
+              category,
+              created_at,
+              updated_at,
+              owner_id
+            )
+          )
+        )
+      )
+    `)
+    .order('name');
+
+  if (packetsError) {
+    console.error('Error fetching packets with meals:', packetsError.message);
+    throw new Error('Failed to fetch packets with meals');
+  }
+
+  // Transform the data to match the expected structure
+  return packets.map(packet => ({
+    ...packet,
+    meals: packet.packet_meals?.map(pm => ({
+      ...(pm.meals as any),
+      quantity: pm.quantity,
+      ingredients: pm.meals?.meal_ingredients?.map(mi => ({
+        ...(mi.ingredients as any),
+        quantity: mi.quantity
+      })) || []
+    })) || []
+  }));
+}
+
 // Create a new packet
 export const createPacket = withAuth(async (formData: PacketFormValues) => {
   const validated = packetSchema.parse(formData);
@@ -195,4 +250,24 @@ export const removePacketMeal = withAuth(async (packetId: string, mealId: string
 
   revalidatePath('/');
   return { success: true };
+});
+
+// Remove price override from packet
+export const removePacketPriceOverride = withAuth(async (packetId: string) => {
+  const { data, error } = await supabaseAdmin
+    .from('packets')
+    .update({ 
+      price_net_override: null 
+    })
+    .eq('id', packetId)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error removing packet price override:', error.message);
+    throw new Error(`Failed to remove packet price override: ${error.message}`);
+  }
+
+  revalidatePath('/');
+  return { success: true, data };
 });

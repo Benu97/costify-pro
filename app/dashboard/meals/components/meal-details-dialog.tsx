@@ -49,7 +49,8 @@ import {
   updateMeal, 
   addMealIngredient, 
   updateMealIngredient, 
-  removeMealIngredient 
+  removeMealIngredient,
+  removeMealPriceOverride
 } from '@/app/actions/meals';
 import { getIngredients } from '@/app/actions/ingredients';
 import { toast } from 'sonner';
@@ -194,6 +195,30 @@ export function MealDetailsDialog({
     }
   };
 
+  const handleRemovePriceOverride = async () => {
+    if (!meal) return;
+    
+    setIsSubmitting(true);
+    try {
+      const result = await removeMealPriceOverride(meal.id);
+      if (result.success && result.data) {
+        const updatedMeal = { ...meal, price_net_override: null };
+        setMeal(updatedMeal as MealWithIngredients);
+        // Update the form to reflect the change
+        form.setValue('price_net_override', null);
+        if (onMealUpdated) {
+          onMealUpdated(result.data as Meal);
+        }
+        toast.success('Price override removed - meal will now calculate from ingredients');
+      }
+    } catch (error) {
+      console.error('Failed to remove price override:', error);
+      toast.error('Failed to remove price override');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Calculate costs
   const mealNetCost = meal ? calcMealNet(meal, meal.ingredients) : 0;
   const totalIngredientCost = meal ? meal.ingredients.reduce((total, ing) => 
@@ -267,14 +292,28 @@ export function MealDetailsDialog({
                       <FormItem>
                         <FormLabel>Price Override (€)</FormLabel>
                         <FormControl>
-                          <Input 
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            placeholder="Leave empty to calculate from ingredients"
-                            {...field}
-                            value={field.value || ''}
-                          />
+                          <div className="flex gap-2">
+                            <Input 
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              placeholder="Leave empty to calculate from ingredients"
+                              {...field}
+                              value={field.value || ''}
+                            />
+                            {meal.price_net_override !== null && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={handleRemovePriceOverride}
+                                disabled={isSubmitting}
+                                className="whitespace-nowrap"
+                              >
+                                Clear Override
+                              </Button>
+                            )}
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
