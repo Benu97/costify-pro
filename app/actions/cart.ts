@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createServerClient } from '../lib/supabase-server';
 import { supabaseAdmin, withAuth } from '../lib/supabase-server-utils';
 import { Cart, CartItem } from '../lib/pricing';
-import { cartItemSchema, type CartItemFormValues } from '../lib/validation-schemas';
+import { cartItemSchema, cartItemBatchSchema, type CartItemFormValues, type CartItemBatchFormValues } from '../lib/validation-schemas';
 
 // Get current draft cart or create one if none exists
 export const getCurrentDraftCart = withAuth(async () => {
@@ -235,4 +235,133 @@ export const searchItems = withAuth(async (query: string) => {
     meals: meals || [],
     packets: packets || []
   };
+});
+
+// Add multiple items to cart efficiently (batch operation)
+export const addMultipleItemsToCart = withAuth(async (formData: CartItemBatchFormValues) => {
+  const validated = cartItemBatchSchema.parse(formData);
+  const { quantity, ...itemData } = formData;
+  
+  // Create array of items to insert
+  const itemsToInsert = Array(quantity).fill(null).map(() => ({
+    cart_id: validated.cart_id,
+    item_type: validated.item_type,
+    item_id: validated.item_id,
+    markup_pct: validated.markup_pct,
+  }));
+
+  const { data, error } = await supabaseAdmin
+    .from('cart_items')
+    .insert(itemsToInsert)
+    .select();
+
+  if (error) {
+    console.error('Error adding items to cart:', error);
+    throw new Error(`Failed to add items to cart: ${error.message}`);
+  }
+
+  revalidatePath('/');
+  return { success: true, data };
+});
+
+// Get cart items with details (optimized with joins)
+export const getCartItemsOptimized = withAuth(async (cartId: string) => {
+  // Get all cart items first
+  const { data: cartItems, error: itemsError } = await supabaseAdmin
+    .from('cart_items')
+    .select('*')
+    .eq('cart_id', cartId)
+    .order('created_at');
+
+  if (itemsError) {
+    console.error('Error fetching cart items:', itemsError);
+    throw new Error('Failed to fetch cart items');
+  }
+
+  if (!cartItems || cartItems.length === 0) {
+    return [];
+  }
+
+  // Group items by type to reduce queries
+  const mealIds = cartItems
+    .filter(item => item.item_type === 'meal')
+    .map(item => item.item_id);
+  
+  const packetIds = cartItems
+    .filter(item => item.item_type === 'packet')
+    .map(item => item.item_id);
+
+  // Fetch all meals and packets in batches
+  const [mealsData, packetsData] = await Promise.all([
+    mealIds.length > 0 
+      ? supabaseAdmin
+          .from('meals')
+          .select('*, meal_ingredients(*, ingredients(*))')
+          .in('id', mealIds)
+      : { data: [] },
+    
+    packetIds.length > 0
+      ? supabaseAdmin
+          .from('packets')
+          .select('*, packet_meals(*, meals(*, meal_ingredients(*, ingredients(*))))')
+          .in('id', packetIds)
+      : { data: [] }
+  ]);
+
+  // Create lookup maps for efficient access
+  const mealsMap = new Map((mealsData.data || []).map(meal => [meal.id, meal]));
+  const packetsMap = new Map((packetsData.data || []).map(packet => [packet.id, packet]));
+
+  // Enhance cart items with details
+  const enhancedItems = cartItems.map(item => ({
+    ...item,
+    details: item.item_type === 'meal' 
+      ? mealsMap.get(item.item_id)
+      : packetsMap.get(item.item_id)
+  }));
+
+  return enhancedItems;
+});
+
+// Bulk remove cart items
+export const removeMultipleCartItems = withAuth(async (itemIds: string[]) => {
+  if (itemIds.length === 0) return { success: true };
+
+  const { error } = await supabaseAdmin
+    .from('cart_items')
+    .delete()
+    .in('id', itemIds);
+
+  if (error) {
+    console.error('Error removing cart items:', error);
+    throw new Error(`Failed to remove cart items: ${error.message}`);
+  }
+
+  revalidatePath('/');
+  return { success: true };
+});
+
+// Update multiple cart items markup at once
+export const updateMultipleCartItemsMarkup = withAuth(async (updates: Array<{ id: string; markup_pct: number }>) => {
+  if (updates.length === 0) return { success: true };
+
+  // Use Promise.all for concurrent updates
+  const updatePromises = updates.map(update => 
+    supabaseAdmin
+      .from('cart_items')
+      .update({ markup_pct: update.markup_pct })
+      .eq('id', update.id)
+  );
+
+  const results = await Promise.all(updatePromises);
+  
+  // Check for any errors
+  const errors = results.filter(result => result.error);
+  if (errors.length > 0) {
+    console.error('Error updating cart items:', errors);
+    throw new Error('Failed to update some cart items');
+  }
+
+  revalidatePath('/');
+  return { success: true };
 });

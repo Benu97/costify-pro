@@ -68,13 +68,23 @@ export default function CartSidebar() {
 
   const handleSaveEdit = async () => {
     if (editingItemId) {
+      const originalMarkup = cartItems.find(item => item.id === editingItemId)?.markup_pct || 0;
+      const originalQuantity = cartItems.find(item => item.id === editingItemId)?.quantity || 1;
+      
       try {
-        await updateItemMarkup(editingItemId, editMarkup);
-        await updateItemQuantity(editingItemId, editQuantity);
+        // Show immediate feedback
+        toast.loading('Updating cart item...', { id: 'cart-update' });
+        
+        // Update both values concurrently for better performance
+        await Promise.all([
+          updateItemMarkup(editingItemId, editMarkup),
+          updateItemQuantity(editingItemId, editQuantity)
+        ]);
+        
         setEditingItemId(null);
-        toast.success('Item updated successfully');
+        toast.success('Item updated successfully', { id: 'cart-update' });
       } catch (error) {
-        toast.error('Failed to update item');
+        toast.error('Failed to update item', { id: 'cart-update' });
       }
     }
   };
@@ -399,7 +409,15 @@ export default function CartSidebar() {
                                   variant="outline"
                                   size="sm"
                                   className="h-7 flex-1 text-xs text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50"
-                                  onClick={() => removeItem(item.id)}
+                                  onClick={async () => {
+                                    toast.loading('Removing item...', { id: 'cart-remove' });
+                                    try {
+                                      await removeItem(item.id);
+                                      toast.success('Item removed from cart', { id: 'cart-remove' });
+                                    } catch (error) {
+                                      toast.error('Failed to remove item', { id: 'cart-remove' });
+                                    }
+                                  }}
                                 >
                                   <Trash2 className="h-3 w-3 mr-1" />
                                   Remove

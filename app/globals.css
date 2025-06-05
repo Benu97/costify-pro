@@ -202,7 +202,61 @@
   }
   
   .dark .glass-effect {
-    background: oklch(0.145 0 0 / 80%);
-    border: 1px solid oklch(1 0 0 / 10%);
+    backdrop-filter: blur(12px);
+    background: oklch(0.205 0 0 / 80%);
+  }
+  
+  /* 3D Transform Effects for Tab Buttons */
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  
+  .transform-gpu {
+    transform: translateZ(0);
+    will-change: transform;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    backface-visibility: hidden;
+  }
+  
+  .rotate-x-3 {
+    transform: rotateX(3deg);
+  }
+  
+  .rotate-x-6 {
+    transform: rotateX(6deg);
+  }
+  
+  /* Enhanced 3D effects for tab buttons */
+  .tab-3d-hover {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-style: preserve-3d;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    backface-visibility: hidden;
+  }
+  
+  .tab-3d-hover:hover {
+    transform: scale(1.05) translateY(-4px) rotateX(3deg);
+  }
+  
+  .tab-3d-active {
+    transform: scale(1.05) translateY(-8px) rotateX(6deg);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    backface-visibility: hidden;
+  }
+  
+  /* Fix for sharp text on transformed elements */
+  .tab-button-text {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: 'kern' 1;
+    letter-spacing: 0.01em;
   }
 }

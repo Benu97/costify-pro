@@ -33,7 +33,7 @@ export default function RootLayout({
           {children}
         </FavoritesProvider>
         <Toaster 
-          position="top-right" 
+          position="bottom-left" 
           expand={false}
           richColors 
           closeButton

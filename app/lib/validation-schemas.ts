@@ -40,4 +40,10 @@ export const cartItemSchema = z.object({
   markup_pct: z.coerce.number().min(0).default(0),
 });
 
+// Cart item with quantity for batch operations
+export const cartItemBatchSchema = cartItemSchema.extend({
+  quantity: z.coerce.number().min(1).default(1),
+});
+
 export type CartItemFormValues = z.infer<typeof cartItemSchema>;
+export type CartItemBatchFormValues = z.infer<typeof cartItemBatchSchema>;

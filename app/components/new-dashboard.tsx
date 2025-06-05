@@ -318,6 +318,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
         setLocalMeals(
           localMeals.filter((item) => item.id !== meal.id)
         );
+        setIsEditMealDialogOpen(false);
         toast.success('Meal deleted successfully', {
           description: `${meal.name} has been removed from your menu`
         });
@@ -355,7 +356,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
         setLocalPackets([...localPackets, result.data as Packet]);
         setIsAddPacketDialogOpen(false);
         toast.success('Packet created successfully', {
-          description: `${data.name} has been added to your packages`
+          description: `${data.name} has been added to your inventory`
         });
       }
     } catch (error) {
@@ -403,8 +404,9 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
         setLocalPackets(
           localPackets.filter((item) => item.id !== packet.id)
         );
+        setIsEditPacketDialogOpen(false);
         toast.success('Packet deleted successfully', {
-          description: `${packet.name} has been removed from your packages`
+          description: `${packet.name} has been removed from your inventory`
         });
       }
     } catch (error) {
@@ -427,7 +429,8 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
           className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-lg"
         >
           <div className="container mx-auto px-6 py-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between w-full">
+              {/* Left edge - App name and logo */}
               <div className="flex items-center space-x-3">
                 <motion.div 
                   initial={{ scale: 0 }}
@@ -445,42 +448,9 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                 </div>
               </div>
               
-              {/* Quick Stats */}
-              <div className="hidden md:flex items-center space-x-4">
-                <div className="flex items-center space-x-3">
-                  <HoverCard>
-                    <HoverCardTrigger asChild>
-                      <div className="flex items-center space-x-2 cursor-pointer">
-                        <Badge variant="secondary" className="flex items-center space-x-1">
-                          <TrendingUp className="h-3 w-3" />
-                          <span>{stats.totalItems}</span>
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">Total Items</span>
-                      </div>
-                    </HoverCardTrigger>
-                    <HoverCardContent className="w-80">
-                      <div className="space-y-2">
-                        <h4 className="text-sm font-semibold">Inventory Overview</h4>
-                        <div className="grid grid-cols-3 gap-2 text-sm">
-                          <div className="text-center">
-                            <div className="font-medium text-green-600">{stats.ingredients}</div>
-                            <div className="text-muted-foreground">Ingredients</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="font-medium text-blue-600">{stats.meals}</div>
-                            <div className="text-muted-foreground">Meals</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="font-medium text-purple-600">{stats.packets}</div>
-                            <div className="text-muted-foreground">Packets</div>
-                          </div>
-                        </div>
-                      </div>
-                    </HoverCardContent>
-                  </HoverCard>
-                </div>
-                
-                <div className="flex items-center space-x-2">
+              {/* Right edge - User email and logout button */}
+              <div className="flex items-center space-x-4">
+                <div className="hidden md:flex items-center space-x-2">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span className="text-xs font-medium">{userEmail}</span>
                 </div>
@@ -500,38 +470,44 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              {/* Search Bar */}
-              <div className="mb-4 pr-4">
-                <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search items..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 bg-background/50 backdrop-blur-sm border-muted"
-                  />
-                </div>
-              </div>
-
-              {/* Tabs */}
+              {/* Tabs - Updated with 3D effects */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-4">
-                  <TabsTrigger value="ingredients" className="flex items-center space-x-2">
-                    <Wheat className="h-4 w-4" />
-                    <span>Ingredients</span>
-                    <Badge variant="secondary" className="ml-1">{stats.ingredients}</Badge>
+                <TabsList className="grid w-full grid-cols-3 mb-6 gap-3 bg-transparent p-0 h-auto">
+                  <TabsTrigger 
+                    value="ingredients" 
+                    className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border border-muted/50 bg-card hover:border-green-500 hover:shadow-lg hover:shadow-green-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-green-200/90 data-[state=active]:border-green-600 data-[state=active]:shadow-xl data-[state=active]:shadow-green-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
+                  >
+                    <Wheat className="h-10 w-10 text-green-600" />
+                    <span className="text-lg font-medium tab-button-text">Ingredients</span>
                   </TabsTrigger>
-                  <TabsTrigger value="meals" className="flex items-center space-x-2">
-                    <Utensils className="h-4 w-4" />
-                    <span>Meals</span>
-                    <Badge variant="secondary" className="ml-1">{stats.meals}</Badge>
+                  <TabsTrigger 
+                    value="meals" 
+                    className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border border-muted/50 bg-card hover:border-blue-500 hover:shadow-lg hover:shadow-blue-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-blue-200/90 data-[state=active]:border-blue-600 data-[state=active]:shadow-xl data-[state=active]:shadow-blue-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
+                  >
+                    <Utensils className="h-10 w-10 text-blue-600" />
+                    <span className="text-lg font-medium tab-button-text">Meals</span>
                   </TabsTrigger>
-                  <TabsTrigger value="packets" className="flex items-center space-x-2">
-                    <Package className="h-4 w-4" />
-                    <span>Packets</span>
-                    <Badge variant="secondary" className="ml-1">{stats.packets}</Badge>
+                  <TabsTrigger 
+                    value="packets" 
+                    className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border border-muted/50 bg-card hover:border-purple-500 hover:shadow-lg hover:shadow-purple-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-purple-200/90 data-[state=active]:border-purple-600 data-[state=active]:shadow-xl data-[state=active]:shadow-purple-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
+                  >
+                    <Package className="h-10 w-10 text-purple-600" />
+                    <span className="text-lg font-medium tab-button-text">Packets</span>
                   </TabsTrigger>
                 </TabsList>
+
+                {/* Search Bar - Moved between tabs and content */}
+                <div className="mb-6">
+                  <div className="relative w-full">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search ingredients, meals, and packets..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full h-14 pl-12 pr-4 text-base bg-background border-2 border-muted rounded-xl shadow-sm hover:border-primary/30 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                    />
+                  </div>
+                </div>
 
                 {/* Ingredients Tab */}
                 <TabsContent value="ingredients" className="space-y-4">
@@ -560,34 +536,35 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.05 }}
-                          whileHover={{ y: -2 }}
+                          whileHover={{ 
+                            y: -6, 
+                            scale: 1.03,
+                            transition: { duration: 0.15, ease: "easeOut" }
+                          }}
                           className="group"
                         >
-                          <Card className="h-full transition-all duration-200 hover:shadow-md border-muted/50 bg-card/50 backdrop-blur-sm">
-                            <CardHeader className="pb-3">
+                          <Card className="h-full transition-all duration-200 border-green-300/80 bg-card/50 backdrop-blur-sm hover:border-green-600 hover:shadow-lg hover:shadow-green-500/30 hover:bg-card/80">
+                            <CardHeader>
                               <div className="flex items-start justify-between">
-                                <CardTitle className="text-sm font-medium truncate">
-                                  {ingredient.name}
-                                </CardTitle>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      onClick={() => handleEditIngredient(ingredient)}
-                                    >
-                                      <Edit className="h-3 w-3" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>Edit ingredient</p>
-                                  </TooltipContent>
-                                </Tooltip>
+                                <CardTitle className="text-base">{ingredient.name}</CardTitle>
+                                <div className="flex space-x-1">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-9 w-9 p-0 hover:bg-green-100 hover:text-green-700"
+                                        onClick={() => handleEditIngredient(ingredient)}
+                                      >
+                                        <Edit className="h-5 w-5" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Edit ingredient</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </div>
                               </div>
-                              <Badge variant="outline" className="w-fit text-xs">
-                                Ingredient
-                              </Badge>
                             </CardHeader>
                             <CardContent className="pt-0">
                               <div className="flex items-center justify-between">
@@ -606,7 +583,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                   </AnimatePresence>
                 </TabsContent>
 
-                {/* Meals Tab */}
+                {/* Meals Tab - Changed to 4-column grid */}
                 <TabsContent value="meals" className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold">Meals</h2>
@@ -622,7 +599,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                   
                   <AnimatePresence>
                     <motion.div 
-                      className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
+                      className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ staggerChildren: 0.1 }}
@@ -633,23 +610,27 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.05 }}
-                          whileHover={{ y: -2 }}
+                          whileHover={{ 
+                            y: -6, 
+                            scale: 1.03,
+                            transition: { duration: 0.15, ease: "easeOut" }
+                          }}
                           className="group"
                         >
-                          <Card className="h-full transition-all duration-200 hover:shadow-md border-muted/50 bg-card/50 backdrop-blur-sm">
+                          <Card className="h-full transition-all duration-200 border-blue-300/80 bg-card/50 backdrop-blur-sm hover:border-blue-600 hover:shadow-lg hover:shadow-blue-500/30 hover:bg-card/80">
                             <CardHeader>
                               <div className="flex items-start justify-between">
                                 <CardTitle className="text-base">{meal.name}</CardTitle>
-                                <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex space-x-1">
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="h-8 w-8 p-0"
+                                        className="h-9 w-9 p-0 hover:bg-blue-100 hover:text-blue-700"
                                         onClick={() => handleAddToCart(meal, 'meal')}
                                       >
-                                        <ShoppingCart className="h-4 w-4" />
+                                        <ShoppingCart className="h-5 w-5" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -661,25 +642,13 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                                       <Button 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="h-8 w-8 p-0"
-                                        onClick={() => handleViewMealDetails(meal)}
+                                        className="h-9 w-9 p-0 hover:bg-blue-100 hover:text-blue-700"
+                                        onClick={() => {
+                                          setCurrentMealId(meal.id);
+                                          setIsMealDetailsDialogOpen(true);
+                                        }}
                                       >
-                                        <Eye className="h-4 w-4" />
-                                      </Button>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p>View details</p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                  <Tooltip>
-                                    <TooltipTrigger asChild>
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="h-8 w-8 p-0"
-                                        onClick={() => handleEditMeal(meal)}
-                                      >
-                                        <Edit className="h-4 w-4" />
+                                        <Edit className="h-5 w-5" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -688,19 +657,15 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                                   </Tooltip>
                                 </div>
                               </div>
-                              {meal.description && (
-                                <CardDescription className="text-sm line-clamp-2">
-                                  {meal.description}
-                                </CardDescription>
-                              )}
                             </CardHeader>
-                            <CardContent>
-                              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                                <div className="flex items-center space-x-1">
-                                  <Clock className="h-3 w-3" />
-                                  <span>Created {new Date(meal.created_at).toLocaleDateString()}</span>
+                            <CardContent className="pt-0">
+                              <div className="flex items-center justify-between">
+                                <div className="text-lg font-semibold text-blue-600">
+                                  {meal.price_net_override ? `€${meal.price_net_override.toFixed(2)}` : 'Price TBD'}
                                 </div>
-                                <Star className="h-4 w-4 text-yellow-500" />
+                                <div className="text-xs text-muted-foreground">
+                                  per meal
+                                </div>
                               </div>
                             </CardContent>
                           </Card>
@@ -710,7 +675,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                   </AnimatePresence>
                 </TabsContent>
 
-                {/* Packets Tab */}
+                {/* Packets Tab - Changed to 4-column grid */}
                 <TabsContent value="packets" className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h2 className="text-xl font-semibold">Packets</h2>
@@ -726,7 +691,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                   
                   <AnimatePresence>
                     <motion.div 
-                      className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
+                      className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ staggerChildren: 0.1 }}
@@ -737,23 +702,27 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ delay: index * 0.05 }}
-                          whileHover={{ y: -2 }}
+                          whileHover={{ 
+                            y: -6, 
+                            scale: 1.03,
+                            transition: { duration: 0.15, ease: "easeOut" }
+                          }}
                           className="group"
                         >
-                          <Card className="h-full transition-all duration-200 hover:shadow-md border-muted/50 bg-card/50 backdrop-blur-sm">
+                          <Card className="h-full transition-all duration-200 border-purple-300/80 bg-card/50 backdrop-blur-sm hover:border-purple-600 hover:shadow-lg hover:shadow-purple-500/30 hover:bg-card/80">
                             <CardHeader>
                               <div className="flex items-start justify-between">
                                 <CardTitle className="text-base">{packet.name}</CardTitle>
-                                <div className="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex space-x-1">
                                   <Tooltip>
                                     <TooltipTrigger asChild>
                                       <Button 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="h-8 w-8 p-0"
+                                        className="h-9 w-9 p-0 hover:bg-purple-100 hover:text-purple-700"
                                         onClick={() => handleAddToCart(packet, 'packet')}
                                       >
-                                        <ShoppingCart className="h-4 w-4" />
+                                        <ShoppingCart className="h-5 w-5" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -765,10 +734,10 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                                       <Button 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="h-8 w-8 p-0"
+                                        className="h-9 w-9 p-0 hover:bg-purple-100 hover:text-purple-700"
                                         onClick={() => handleViewPacketDetails(packet)}
                                       >
-                                        <Eye className="h-4 w-4" />
+                                        <Eye className="h-5 w-5" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
@@ -780,10 +749,10 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                                       <Button 
                                         variant="ghost" 
                                         size="sm" 
-                                        className="h-8 w-8 p-0"
+                                        className="h-9 w-9 p-0 hover:bg-purple-100 hover:text-purple-700"
                                         onClick={() => handleEditPacket(packet)}
                                       >
-                                        <Edit className="h-4 w-4" />
+                                        <Edit className="h-5 w-5" />
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
