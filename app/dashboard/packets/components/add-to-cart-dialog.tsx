@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Packet } from '@/app/lib/pricing';
 import { ShoppingCart, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { calculatePacketPrice } from '@/app/lib/price-utils';
 
 interface AddToCartDialogProps {
   open: boolean;
@@ -43,7 +44,7 @@ export function AddToCartDialog({
   if (!packet) return null;
 
   // Calculate base price (from meals or override)
-  const basePrice = packet.price_net_override || 0; // TODO: Calculate from meals if no override
+  const basePrice = calculatePacketPrice(packet, (packet as any).meals);
   
   // Calculate prices with markup
   const markupDecimal = typeof markupPercentage === 'number' ? markupPercentage / 100 : 0;

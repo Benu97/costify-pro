@@ -176,7 +176,20 @@ export async function getPacketWithMeals(packetId: string) {
         id,
         name,
         description,
-        price_net_override
+        price_net_override,
+        meal_ingredients (
+          quantity,
+          ingredients (
+            id,
+            name,
+            unit,
+            price_net,
+            category,
+            created_at,
+            updated_at,
+            owner_id
+          )
+        )
       )
     `)
     .eq('packet_id', packetId);
@@ -190,7 +203,11 @@ export async function getPacketWithMeals(packetId: string) {
     ...packet,
     meals: packetMeals.map(pm => ({
       ...(pm.meals as any),
-      quantity: pm.quantity
+      quantity: pm.quantity,
+      ingredients: pm.meals?.meal_ingredients?.map(mi => ({
+        ...(mi.ingredients as any),
+        quantity: mi.quantity
+      })) || []
     }))
   };
 }

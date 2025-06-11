@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,8 +22,8 @@ import { MealDetailsDialog } from '@/app/dashboard/meals/components/meal-details
 import { PacketFormDialog } from '@/app/dashboard/packets/components/packet-form-dialog';
 import { PacketDetailsDialog } from '@/app/dashboard/packets/components/packet-details-dialog';
 import { createIngredient, deleteIngredient, updateIngredient } from '@/app/actions/ingredients';
-import { createMeal, deleteMeal, updateMeal } from '@/app/actions/meals';
-import { createPacket, deletePacket, updatePacket } from '@/app/actions/packets';
+import { createMeal, deleteMeal, updateMeal, getMealWithIngredients } from '@/app/actions/meals';
+import { createPacket, deletePacket, updatePacket, getPacketWithMeals } from '@/app/actions/packets';
 import { IngredientFormValues, MealFormValues, PacketFormValues } from '@/app/lib/validation-schemas';
 import { 
   Package, 
@@ -65,19 +65,6 @@ interface Meal {
   created_at: string;
   updated_at: string;
   owner_id: string;
-  ingredients?: IngredientWithQuantity[];
-}
-
-interface MealWithQuantity {
-  id: string;
-  name: string;
-  description: string | null;
-  price_net_override: number | null;
-  created_at: string;
-  updated_at: string;
-  owner_id: string;
-  quantity: number;
-  ingredients: IngredientWithQuantity[];
 }
 
 interface Packet {
@@ -88,14 +75,21 @@ interface Packet {
   created_at: string;
   updated_at: string;
   owner_id: string;
-  meals?: MealWithQuantity[];
+}
+
+interface MealWithIngredients extends Meal {
+  ingredients: IngredientWithQuantity[];
+}
+
+interface PacketWithMeals extends Packet {
+  meals: Array<MealWithIngredients & { quantity: number }>;
 }
 
 interface NewDashboardProps {
   userEmail: string;
   ingredients: Ingredient[];
-  meals: Meal[];
-  packets: Packet[];
+  meals: MealWithIngredients[];
+  packets: PacketWithMeals[];
 }
 
 export default function NewDashboard({ userEmail, ingredients, meals, packets }: NewDashboardProps) {
@@ -112,26 +106,26 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
   const [isIngredientSubmitting, setIsIngredientSubmitting] = useState(false);
 
   // Meal management state
-  const [localMeals, setLocalMeals] = useState<Meal[]>(meals || []);
+  const [localMeals, setLocalMeals] = useState<MealWithIngredients[]>(meals || []);
   const [isAddMealDialogOpen, setIsAddMealDialogOpen] = useState(false);
   const [isEditMealDialogOpen, setIsEditMealDialogOpen] = useState(false);
   const [isMealDetailsDialogOpen, setIsMealDetailsDialogOpen] = useState(false);
-  const [currentMeal, setCurrentMeal] = useState<Meal | null>(null);
+  const [currentMeal, setCurrentMeal] = useState<MealWithIngredients | null>(null);
   const [currentMealId, setCurrentMealId] = useState<string | null>(null);
   const [isMealSubmitting, setIsMealSubmitting] = useState(false);
 
   // Packet management state
-  const [localPackets, setLocalPackets] = useState<Packet[]>(packets || []);
+  const [localPackets, setLocalPackets] = useState<PacketWithMeals[]>(packets || []);
   const [isAddPacketDialogOpen, setIsAddPacketDialogOpen] = useState(false);
   const [isEditPacketDialogOpen, setIsEditPacketDialogOpen] = useState(false);
   const [isPacketDetailsDialogOpen, setIsPacketDetailsDialogOpen] = useState(false);
-  const [currentPacket, setCurrentPacket] = useState<Packet | null>(null);
+  const [currentPacket, setCurrentPacket] = useState<PacketWithMeals | null>(null);
   const [currentPacketId, setCurrentPacketId] = useState<string | null>(null);
   const [isPacketSubmitting, setIsPacketSubmitting] = useState(false);
 
   // Add to cart state
   const [isAddToCartDialogOpen, setIsAddToCartDialogOpen] = useState(false);
-  const [cartItemToAdd, setCartItemToAdd] = useState<{ item: Meal | Packet; type: 'meal' | 'packet' } | null>(null);
+  const [cartItemToAdd, setCartItemToAdd] = useState<{ item: MealWithIngredients | PacketWithMeals; type: 'meal' | 'packet' } | null>(null);
 
   // Safety check to prevent undefined errors
   const safeCartItems = cartItems || [];
@@ -162,7 +156,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
     cartItems: safeCartItems.reduce((sum, item) => sum + item.quantity, 0)
   };
 
-  const handleAddToCart = (item: Meal | Packet, type: 'meal' | 'packet') => {
+  const handleAddToCart = (item: MealWithIngredients | PacketWithMeals, type: 'meal' | 'packet') => {
     setCartItemToAdd({ item, type });
     setIsAddToCartDialogOpen(true);
   };
@@ -212,8 +206,6 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
   };
 
   const handleUpdateIngredient = async (data: IngredientFormValues) => {
-    if (!data.id) return;
-    
     setIsIngredientSubmitting(true);
     try {
       const result = await updateIngredient(data);
@@ -224,14 +216,20 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
           )
         );
         setIsEditIngredientDialogOpen(false);
+        setCurrentIngredient(null);
         toast.success('Ingredient updated successfully', {
-          description: `${data.name} has been updated`
+          description: 'Your ingredient has been updated'
         });
+        
+        // Trigger cascading updates for meals and packets using this ingredient
+        if (data.id) {
+          debouncedRefreshMealsUsingIngredient(data.id);
+        }
       }
     } catch (error) {
       console.error('Failed to update ingredient:', error);
       toast.error('Failed to update ingredient', {
-        description: 'Please try again or check your input'
+        description: 'Please try again'
       });
     } finally {
       setIsIngredientSubmitting(false);
@@ -245,13 +243,19 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
     try {
       const result = await deleteIngredient(currentIngredient.id);
       if (result.success) {
+        const deletedIngredientId = currentIngredient.id;
+        
         setLocalIngredients(
           localIngredients.filter((item) => item.id !== currentIngredient.id)
         );
         setIsEditIngredientDialogOpen(false);
+        setCurrentIngredient(null);
         toast.success('Ingredient deleted successfully', {
           description: `${currentIngredient.name} has been removed from your inventory`
         });
+        
+        // Trigger cascading updates for meals and packets using this ingredient
+        debouncedRefreshMealsUsingIngredient(deletedIngredientId);
       }
     } catch (error) {
       console.error('Failed to delete ingredient:', error);
@@ -268,12 +272,12 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
     setIsAddMealDialogOpen(true);
   };
 
-  const handleEditMeal = (meal: Meal) => {
+  const handleEditMeal = (meal: MealWithIngredients) => {
     setCurrentMeal(meal);
     setIsEditMealDialogOpen(true);
   };
 
-  const handleViewMealDetails = (meal: Meal) => {
+  const handleViewMealDetails = (meal: MealWithIngredients) => {
     setCurrentMealId(meal.id);
     setIsMealDetailsDialogOpen(true);
   };
@@ -283,7 +287,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
     try {
       const result = await createMeal(data);
       if (result.success && result.data) {
-        setLocalMeals([...localMeals, result.data as Meal]);
+        setLocalMeals([...localMeals, result.data as MealWithIngredients]);
         setIsAddMealDialogOpen(false);
         toast.success('Meal created successfully', {
           description: `${data.name} has been added to your menu`
@@ -308,7 +312,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
       if (result.success && result.data) {
         setLocalMeals(
           localMeals.map((item) => 
-            item.id === data.id ? result.data as Meal : item
+            item.id === data.id ? result.data as MealWithIngredients : item
           )
         );
         setIsEditMealDialogOpen(false);
@@ -326,18 +330,24 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
     }
   };
 
-  const handleDeleteMeal = async (meal: Meal) => {
+  const handleDeleteMeal = async (meal: MealWithIngredients) => {
     setIsMealSubmitting(true);
     try {
       const result = await deleteMeal(meal.id);
       if (result.success) {
+        const deletedMealId = meal.id;
+        
         setLocalMeals(
           localMeals.filter((item) => item.id !== meal.id)
         );
         setIsEditMealDialogOpen(false);
+        setCurrentMeal(null);
         toast.success('Meal deleted successfully', {
           description: `${meal.name} has been removed from your menu`
         });
+        
+        // Trigger cascading updates for packets containing this meal
+        debouncedRefreshPacketsContainingMeal(deletedMealId);
       }
     } catch (error) {
       console.error('Failed to delete meal:', error);
@@ -354,12 +364,12 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
     setIsAddPacketDialogOpen(true);
   };
 
-  const handleEditPacket = (packet: Packet) => {
+  const handleEditPacket = (packet: PacketWithMeals) => {
     setCurrentPacket(packet);
     setIsEditPacketDialogOpen(true);
   };
 
-  const handleViewPacketDetails = (packet: Packet) => {
+  const handleViewPacketDetails = (packet: PacketWithMeals) => {
     setCurrentPacketId(packet.id);
     setIsPacketDetailsDialogOpen(true);
   };
@@ -369,7 +379,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
     try {
       const result = await createPacket(data);
       if (result.success && result.data) {
-        setLocalPackets([...localPackets, result.data as Packet]);
+        setLocalPackets([...localPackets, result.data as PacketWithMeals]);
         setIsAddPacketDialogOpen(false);
         toast.success('Packet created successfully', {
           description: `${data.name} has been added to your inventory`
@@ -394,7 +404,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
       if (result.success && result.data) {
         setLocalPackets(
           localPackets.map((item) => 
-            item.id === data.id ? result.data as Packet : item
+            item.id === data.id ? result.data as PacketWithMeals : item
           )
         );
         setIsEditPacketDialogOpen(false);
@@ -412,7 +422,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
     }
   };
 
-  const handleDeletePacket = async (packet: Packet) => {
+  const handleDeletePacket = async (packet: PacketWithMeals) => {
     setIsPacketSubmitting(true);
     try {
       const result = await deletePacket(packet.id);
@@ -432,6 +442,134 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
       });
     } finally {
       setIsPacketSubmitting(false);
+    }
+  };
+
+  // Add refresh tracking to prevent duplicate updates
+  const refreshTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Debounced cascading update functions to prevent excessive API calls
+  const debouncedRefreshPacketsContainingMeal = useCallback((mealId: string, delay: number = 300) => {
+    const existing = refreshTimeouts.current.get(`packet-${mealId}`);
+    if (existing) {
+      clearTimeout(existing);
+    }
+    
+    const timeout = setTimeout(() => {
+      refreshPacketsContainingMeal(mealId);
+      refreshTimeouts.current.delete(`packet-${mealId}`);
+    }, delay);
+    
+    refreshTimeouts.current.set(`packet-${mealId}`, timeout);
+  }, [localPackets]);
+
+  const debouncedRefreshMealsUsingIngredient = useCallback((ingredientId: string, delay: number = 300) => {
+    const existing = refreshTimeouts.current.get(`meal-${ingredientId}`);
+    if (existing) {
+      clearTimeout(existing);
+    }
+    
+    const timeout = setTimeout(() => {
+      refreshMealsUsingIngredient(ingredientId);
+      refreshTimeouts.current.delete(`meal-${ingredientId}`);
+    }, delay);
+    
+    refreshTimeouts.current.set(`meal-${ingredientId}`, timeout);
+  }, [localMeals]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      refreshTimeouts.current.forEach(timeout => clearTimeout(timeout));
+      refreshTimeouts.current.clear();
+    };
+  }, []);
+
+  // Helper function to refresh packets that contain a specific meal
+  const refreshPacketsContainingMeal = async (mealId: string) => {
+    try {
+      // Find packets that contain this meal
+      const packetsToRefresh = localPackets.filter(packet => 
+        packet.meals?.some(meal => meal.id === mealId)
+      );
+      
+      if (packetsToRefresh.length === 0) {
+        return; // No packets to refresh
+      }
+      
+      // Refetch each packet's data with error handling for deleted items
+      const refreshPromises = packetsToRefresh.map(async (packet) => {
+        try {
+          return await getPacketWithMeals(packet.id);
+        } catch (error) {
+          console.warn(`Failed to refresh packet ${packet.id}, it may have been deleted:`, error);
+          return null; // Mark for removal
+        }
+      });
+      
+      const refreshedPackets = await Promise.all(refreshPromises);
+      
+      // Update local state, filtering out deleted packets
+      setLocalPackets(prevPackets => 
+        prevPackets.map(packet => {
+          const refreshedPacket = refreshedPackets.find(rp => rp?.id === packet.id);
+          return refreshedPacket ? refreshedPacket as PacketWithMeals : packet;
+        }).filter(packet => {
+          // Remove packets that failed to load (might be deleted)
+          const stillExists = refreshedPackets.some(rp => rp?.id === packet.id);
+          return stillExists || !packetsToRefresh.some(ptr => ptr.id === packet.id);
+        })
+      );
+    } catch (error) {
+      console.error('Failed to refresh packets containing meal:', error);
+    }
+  };
+
+  // Helper function to refresh meals that use a specific ingredient
+  const refreshMealsUsingIngredient = async (ingredientId: string) => {
+    try {
+      // Find meals that use this ingredient
+      const mealsToRefresh = localMeals.filter(meal =>
+        meal.ingredients?.some(ing => ing.id === ingredientId)
+      );
+      
+      if (mealsToRefresh.length === 0) {
+        return; // No meals to refresh
+      }
+      
+      // Refetch each meal's data with error handling for deleted items
+      const refreshPromises = mealsToRefresh.map(async (meal) => {
+        try {
+          return await getMealWithIngredients(meal.id);
+        } catch (error) {
+          console.warn(`Failed to refresh meal ${meal.id}, it may have been deleted:`, error);
+          return null; // Mark for removal
+        }
+      });
+      
+      const refreshedMeals = await Promise.all(refreshPromises);
+      
+      // Update local state, filtering out deleted meals
+      setLocalMeals(prevMeals =>
+        prevMeals.map(meal => {
+          const refreshedMeal = refreshedMeals.find(rm => rm?.id === meal.id);
+          return refreshedMeal ? refreshedMeal as MealWithIngredients : meal;
+        }).filter(meal => {
+          // Remove meals that failed to load (might be deleted)
+          const stillExists = refreshedMeals.some(rm => rm?.id === meal.id);
+          return stillExists || !mealsToRefresh.some(mtr => mtr.id === meal.id);
+        })
+      );
+
+      // Also refresh packets that contain these meals (only for successfully refreshed meals)
+      const successfulMealIds = refreshedMeals
+        .filter(rm => rm !== null)
+        .map(rm => rm!.id);
+      
+      // Use direct function call here to avoid infinite loops
+      await Promise.all(successfulMealIds.map(mealId => refreshPacketsContainingMeal(mealId)));
+    } catch (error) {
+      console.error('Failed to refresh meals using ingredient:', error);
     }
   };
 
@@ -843,12 +981,25 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
           open={isMealDetailsDialogOpen}
           onOpenChange={setIsMealDetailsDialogOpen}
           mealId={currentMealId}
-          onMealUpdated={(updatedMeal) => {
-            setLocalMeals(
-              localMeals.map((meal) => 
-                meal.id === updatedMeal.id ? updatedMeal as Meal : meal
-              )
-            );
+          onMealUpdated={async (updatedMeal) => {
+            try {
+              const fullMealData = await getMealWithIngredients(updatedMeal.id);
+              setLocalMeals(
+                localMeals.map((meal) => 
+                  meal.id === updatedMeal.id ? fullMealData as MealWithIngredients : meal
+                )
+              );
+              
+              // Also refresh packets that contain this meal
+              debouncedRefreshPacketsContainingMeal(updatedMeal.id);
+            } catch (error) {
+              console.error('Failed to refetch meal data:', error);
+              setLocalMeals(
+                localMeals.map((meal) => 
+                  meal.id === updatedMeal.id ? { ...meal, ...updatedMeal } : meal
+                )
+              );
+            }
           }}
         />
 
@@ -876,12 +1027,22 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
           open={isPacketDetailsDialogOpen}
           onOpenChange={setIsPacketDetailsDialogOpen}
           packetId={currentPacketId}
-          onPacketUpdated={(updatedPacket) => {
-            setLocalPackets(
-              localPackets.map((packet) => 
-                packet.id === updatedPacket.id ? updatedPacket as Packet : packet
-              )
-            );
+          onPacketUpdated={async (updatedPacket) => {
+            try {
+              const fullPacketData = await getPacketWithMeals(updatedPacket.id);
+              setLocalPackets(
+                localPackets.map((packet) => 
+                  packet.id === updatedPacket.id ? fullPacketData as PacketWithMeals : packet
+                )
+              );
+            } catch (error) {
+              console.error('Failed to refetch packet data:', error);
+              setLocalPackets(
+                localPackets.map((packet) => 
+                  packet.id === updatedPacket.id ? { ...packet, ...updatedPacket } : packet
+                )
+              );
+            }
           }}
         />
         

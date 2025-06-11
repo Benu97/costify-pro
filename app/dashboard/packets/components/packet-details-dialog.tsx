@@ -42,8 +42,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Trash2, Save, Calculator } from 'lucide-react';
 import { PacketFormValues, packetSchema } from '@/app/lib/validation-schemas';
-import { Packet, Meal, MealWithQuantity } from '@/app/lib/pricing';
-import { calcPacketNet } from '@/app/lib/pricing';
+import { Packet, Meal, MealWithQuantity, MealWithIngredients, IngredientWithQuantity } from '@/app/lib/pricing';
+import { calcPacketNet, calcMealNet } from '@/app/lib/pricing';
 import { 
   getPacketWithMeals, 
   updatePacket, 
@@ -62,7 +62,7 @@ interface PacketDetailsDialogProps {
 }
 
 interface PacketWithMeals extends Packet {
-  meals: MealWithQuantity[];
+  meals: Array<MealWithIngredients & { quantity: number }>;
 }
 
 export function PacketDetailsDialog({
@@ -195,10 +195,11 @@ export function PacketDetailsDialog({
   };
 
   // Calculate costs (simplified since we don't have full meal ingredient data)
-  const packetNetCost = packet?.price_net_override || 0;
-  const totalMealsCost = packet ? packet.meals.reduce((total, meal) => 
-    total + ((meal.price_net_override || 0) * meal.quantity), 0
-  ) : 0;
+  const packetNetCost = packet?.price_net_override || (packet ? calcPacketNet(packet, packet.meals as any) : 0);
+  const totalMealsCost = packet ? packet.meals.reduce((total, meal) => {
+    const mealPrice = meal.price_net_override || calcMealNet(meal, meal.ingredients || []);
+    return total + (mealPrice * meal.quantity);
+  }, 0) : 0;
 
   if (!packet && !isLoading) {
     return null;
@@ -397,10 +398,10 @@ export function PacketDetailsDialog({
                               />
                             </TableCell>
                             <TableCell className="text-right">
-                              €{(meal.price_net_override || 0).toFixed(2)}
+                              €{(meal.price_net_override || calcMealNet(meal, meal.ingredients)).toFixed(2)}
                             </TableCell>
                             <TableCell className="text-right">
-                              €{((meal.price_net_override || 0) * meal.quantity).toFixed(2)}
+                              €{((meal.price_net_override || calcMealNet(meal, meal.ingredients)) * meal.quantity).toFixed(2)}
                             </TableCell>
                             <TableCell>
                               <Button

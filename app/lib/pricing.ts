@@ -90,16 +90,27 @@ export type CartSummary = {
  */
 export function calcMealNet<
   T extends Meal,
-  U extends IngredientWithQuantity[]
+  U extends IngredientWithQuantity[] | any[]
 >(meal: T, ingredientsWithQty: U): number {
   // If a price override exists, use that instead of calculating
-  if (meal.price_net_override !== null) {
+  if (meal.price_net_override !== null && meal.price_net_override >= 0) {
     return meal.price_net_override;
   }
   
-  // Calculate based on ingredients
-  return ingredientsWithQty.reduce((total, ingredient) => {
-    return total + (ingredient.price_net * ingredient.quantity);
+  // Calculate based on ingredients (default to empty array if undefined)
+  const ingredients = ingredientsWithQty || [];
+  return ingredients.reduce((total, ingredient) => {
+    // Validate ingredient has required properties and positive values
+    if (!ingredient || typeof ingredient.price_net !== 'number' || typeof ingredient.quantity !== 'number') {
+      console.warn('Invalid ingredient data found:', ingredient);
+      return total;
+    }
+    
+    // Ensure no negative values
+    const price = Math.max(0, ingredient.price_net);
+    const quantity = Math.max(0, ingredient.quantity);
+    
+    return total + (price * quantity);
   }, 0);
 }
 
@@ -124,17 +135,27 @@ export function calcMealGross(mealNet: number, markupPct: number): number {
  */
 export function calcPacketNet<
   T extends Packet,
-  U extends Array<MealWithIngredients & { quantity: number }>
+  U extends Array<any>
 >(packet: T, mealsWithQty: U): number {
   // If a price override exists, use that instead of calculating
-  if (packet.price_net_override !== null) {
+  if (packet.price_net_override !== null && packet.price_net_override >= 0) {
     return packet.price_net_override;
   }
   
   // Calculate based on meals
   return mealsWithQty.reduce((total, mealWithDetails) => {
-    const mealNet = calcMealNet(mealWithDetails, mealWithDetails.ingredients);
-    return total + (mealNet * mealWithDetails.quantity);
+    // Validate meal has required properties
+    if (!mealWithDetails || typeof mealWithDetails.quantity !== 'number') {
+      console.warn('Invalid meal data found:', mealWithDetails);
+      return total;
+    }
+    
+    // Ensure the meal has ingredients, default to empty array if not
+    const ingredients = mealWithDetails.ingredients || [];
+    const mealNet = calcMealNet(mealWithDetails, ingredients);
+    const quantity = Math.max(0, mealWithDetails.quantity);
+    
+    return total + (mealNet * quantity);
   }, 0);
 }
 
