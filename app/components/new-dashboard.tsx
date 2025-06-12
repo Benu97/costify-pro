@@ -974,6 +974,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
             defaultValues={currentMeal}
             isSubmitting={isMealSubmitting}
             title="Edit Meal"
+            onDelete={() => handleDeleteMeal(currentMeal)}
           />
         )}
 
@@ -1001,6 +1002,13 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
             );
             }
           }}
+          onMealDeleted={(meal) => {
+            // Convert Meal to MealWithIngredients for the delete handler
+            const mealWithIngredients = localMeals.find(m => m.id === meal.id);
+            if (mealWithIngredients) {
+              handleDeleteMeal(mealWithIngredients);
+            }
+          }}
         />
 
         {/* Packet Management Dialogs */}
@@ -1020,6 +1028,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
             defaultValues={currentPacket}
             isSubmitting={isPacketSubmitting}
             title="Edit Packet"
+            onDelete={() => handleDeletePacket(currentPacket)}
           />
         )}
 
@@ -1042,6 +1051,13 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                   packet.id === updatedPacket.id ? { ...packet, ...updatedPacket } : packet
               )
             );
+            }
+          }}
+          onPacketDeleted={(packet) => {
+            // Convert Packet to PacketWithMeals for the delete handler
+            const packetWithMeals = localPackets.find(p => p.id === packet.id);
+            if (packetWithMeals) {
+              handleDeletePacket(packetWithMeals);
             }
           }}
         />

@@ -34,7 +34,7 @@ export async function getPacketsWithMeals() {
 
   if (packetsError) {
     console.error('Error fetching packets:', packetsError.message);
-    throw new Error('Failed to fetch packets');
+    throw new Error(`Failed to fetch packets: ${packetsError.message}`);
   }
 
   // Then get meals for each packet
@@ -69,13 +69,16 @@ export async function getPacketsWithMeals() {
 
       if (mealsError) {
         console.error(`Error fetching meals for packet ${packet.id}:`, mealsError.message);
-        // Return packet without meals if there's an error
+        // Return packet without meals if there's an error (e.g., orphaned references)
         return { ...packet, meals: [] };
       }
 
+      // Filter out any null meals (in case of orphaned packet_meals records)
+      const validMeals = packetMeals.filter(pm => pm.meals !== null);
+
       return {
         ...packet,
-        meals: packetMeals.map(pm => ({
+        meals: validMeals.map(pm => ({
           ...(pm.meals as any),
           quantity: pm.quantity,
           ingredients: pm.meals?.meal_ingredients?.map(mi => ({
@@ -152,6 +155,18 @@ export const updatePacket = withAuth(async (formData: PacketFormValues) => {
 
 // Delete a packet
 export const deletePacket = withAuth(async (id: string) => {
+  // First delete all packet_meals relationships
+  const { error: packetMealsError } = await supabaseAdmin
+    .from('packet_meals')
+    .delete()
+    .eq('packet_id', id);
+
+  if (packetMealsError) {
+    console.error('Error deleting packet meals:', packetMealsError.message);
+    throw new Error(`Failed to delete packet meals: ${packetMealsError.message}`);
+  }
+
+  // Then delete the packet itself
   const { error } = await supabaseAdmin
     .from('packets')
     .delete()

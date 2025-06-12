@@ -8,7 +8,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,7 +41,8 @@ import {
   Loader2, 
   X,
   Package,
-  DollarSign
+  DollarSign,
+  AlertTriangle
 } from 'lucide-react';
 import { PacketFormValues, packetSchema } from '@/app/lib/validation-schemas';
 import { Packet, Meal, IngredientWithQuantity } from '@/app/lib/pricing';
@@ -60,6 +62,7 @@ interface PacketDetailsDialogProps {
   onOpenChange: (open: boolean) => void;
   packetId: string | null;
   onPacketUpdated?: (packet: Packet) => void;
+  onPacketDeleted?: (packet: Packet) => void;
 }
 
 interface MealWithIngredients extends Meal {
@@ -74,12 +77,14 @@ export function PacketDetailsDialog({
   open,
   onOpenChange,
   packetId,
-  onPacketUpdated
+  onPacketUpdated,
+  onPacketDeleted
 }: PacketDetailsDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [packet, setPacket] = useState<PacketWithMeals | null>(null);
   const [availableMeals, setAvailableMeals] = useState<MealWithIngredients[]>([]);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Enhanced search state
   const [mealSearchQuery, setMealSearchQuery] = useState<string>('');
@@ -322,6 +327,17 @@ export function PacketDetailsDialog({
     }
   };
 
+  const handleDeletePacket = () => {
+    setShowDeleteConfirm(false);
+    if (packet && onPacketDeleted) {
+      onPacketDeleted(packet);
+      // Close the dialog after successful deletion with a small delay
+      setTimeout(() => {
+        onOpenChange(false);
+      }, 100);
+    }
+  };
+
   // Calculate costs with proper null handling and form reactivity
   const formValues = form.watch();
   const currentPriceOverride = formValues.price_net_override;
@@ -341,6 +357,62 @@ export function PacketDetailsDialog({
 
   if (!packet && !isLoading) {
     return null;
+  }
+
+  // Show delete confirmation dialog
+  if (showDeleteConfirm && packet && onPacketDeleted) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Delete Packet
+            </DialogTitle>
+            <DialogDescription className="text-base">
+              Are you sure you want to delete the packet &quot;{packet.name}&quot;? 
+              <br />
+              <strong className="text-destructive">This action cannot be undone.</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 my-4">
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <span>This will remove the packet and its meal configuration.</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setShowDeleteConfirm(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              variant="destructive" 
+              onClick={handleDeletePacket}
+              disabled={isSubmitting}
+              className="min-w-[100px]"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
   }
 
   return (
@@ -667,31 +739,49 @@ export function PacketDetailsDialog({
         ) : null}
         
         <DialogFooter className="flex justify-between">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Close
-          </Button>
-          <Button 
-            onClick={form.handleSubmit(handleSavePacket)}
-            disabled={isSubmitting || isLoading}
-            className="min-w-[120px]"
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="h-4 w-4 mr-2" />
-                Save Changes
-              </>
-            )}
-          </Button>
+          {/* Show delete button only when onPacketDeleted is provided */}
+          {onPacketDeleted ? (
+            <Button 
+              type="button" 
+              variant="destructive" 
+              onClick={() => setShowDeleteConfirm(true)}
+              disabled={isSubmitting}
+              className="mr-auto"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete Packet
+            </Button>
+          ) : (
+            <div /> // Spacer for layout
+          )}
+          
+          <div className="flex gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+            >
+              Close
+            </Button>
+            <Button 
+              onClick={form.handleSubmit(handleSavePacket)}
+              disabled={isSubmitting || isLoading}
+              className="min-w-[120px]"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
