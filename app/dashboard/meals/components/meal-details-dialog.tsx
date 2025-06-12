@@ -219,8 +219,20 @@ export function MealDetailsDialog({
     }
   };
 
-  // Calculate costs
-  const mealNetCost = meal ? calcMealNet(meal, meal.ingredients) : 0;
+  // Calculate costs with proper null handling and form reactivity
+  const formValues = form.watch();
+  const currentPriceOverride = formValues.price_net_override;
+  
+  // Add NaN protection to handle edge cases where form validation fails
+  const mealNetCost = (() => {
+    // If there's a valid override price (not null/undefined/NaN), use it
+    if (currentPriceOverride !== null && currentPriceOverride !== undefined && !isNaN(currentPriceOverride)) {
+      return currentPriceOverride;
+    }
+    // Otherwise calculate from ingredients
+    return meal ? calcMealNet(meal, meal.ingredients) : 0;
+  })();
+    
   const totalIngredientCost = meal ? meal.ingredients.reduce((total, ing) => 
     total + (ing.price_net * ing.quantity), 0
   ) : 0;
@@ -299,7 +311,11 @@ export function MealDetailsDialog({
                               min="0"
                               placeholder="Leave empty to calculate from ingredients"
                               {...field}
-                              value={field.value || ''}
+                              value={field.value === null ? '' : field.value}
+                              onChange={(e) => {
+                                const value = e.target.value;
+                                field.onChange(value === '' ? null : parseFloat(value));
+                              }}
                             />
                             {meal.price_net_override !== null && (
                               <Button
@@ -335,7 +351,7 @@ export function MealDetailsDialog({
                         </div>
                         <div className="flex justify-between">
                           <span>Final Meal Cost:</span>
-                          <Badge variant="default">€{mealNetCost.toFixed(2)}</Badge>
+                          <Badge variant="default">€{(typeof mealNetCost === 'number' && !isNaN(mealNetCost) ? mealNetCost : 0).toFixed(2)}</Badge>
                         </div>
                         {meal.price_net_override && (
                           <p className="text-xs text-muted-foreground">

@@ -5,9 +5,10 @@ import { createServerClient } from '../lib/supabase-server';
 import { supabaseAdmin, withAuth } from '../lib/supabase-server-utils';
 import { packetSchema, type PacketFormValues } from '../lib/validation-schemas';
 
-// Get all packets for the current user
+// Get all packets
 export async function getPackets() {
   const supabase = createServerClient();
+  
   const { data: packets, error } = await supabase
     .from('packets')
     .select('*')
@@ -21,59 +22,72 @@ export async function getPackets() {
   return packets;
 }
 
-// Get all packets with their meals and ingredients for price calculation
+// Get all packets with meals for dashboard display
 export async function getPacketsWithMeals() {
   const supabase = createServerClient();
   
+  // First get all packets
   const { data: packets, error: packetsError } = await supabase
     .from('packets')
-    .select(`
-      *,
-      packet_meals (
-        quantity,
-        meals (
-          id,
-          name,
-          description,
-          price_net_override,
-          created_at,
-          updated_at,
-          owner_id,
-          meal_ingredients (
-            quantity,
-            ingredients (
-              id,
-              name,
-              unit,
-              price_net,
-              category,
-              created_at,
-              updated_at,
-              owner_id
-            )
-          )
-        )
-      )
-    `)
+    .select('*')
     .order('name');
 
   if (packetsError) {
-    console.error('Error fetching packets with meals:', packetsError.message);
-    throw new Error('Failed to fetch packets with meals');
+    console.error('Error fetching packets:', packetsError.message);
+    throw new Error('Failed to fetch packets');
   }
 
-  // Transform the data to match the expected structure
-  return packets.map(packet => ({
-    ...packet,
-    meals: packet.packet_meals?.map(pm => ({
-      ...(pm.meals as any),
-      quantity: pm.quantity,
-      ingredients: pm.meals?.meal_ingredients?.map(mi => ({
-        ...(mi.ingredients as any),
-        quantity: mi.quantity
-      })) || []
-    })) || []
-  }));
+  // Then get meals for each packet
+  const packetsWithMeals = await Promise.all(
+    packets.map(async (packet) => {
+      const { data: packetMeals, error: mealsError } = await supabase
+        .from('packet_meals')
+        .select(`
+          meal_id,
+          quantity,
+          meals (
+            id,
+            name,
+            description,
+            price_net_override,
+            meal_ingredients (
+              quantity,
+              ingredients (
+                id,
+                name,
+                unit,
+                price_net,
+                category,
+                created_at,
+                updated_at,
+                owner_id
+              )
+            )
+          )
+        `)
+        .eq('packet_id', packet.id);
+
+      if (mealsError) {
+        console.error(`Error fetching meals for packet ${packet.id}:`, mealsError.message);
+        // Return packet without meals if there's an error
+        return { ...packet, meals: [] };
+      }
+
+      return {
+        ...packet,
+        meals: packetMeals.map(pm => ({
+          ...(pm.meals as any),
+          quantity: pm.quantity,
+          ingredients: pm.meals?.meal_ingredients?.map(mi => ({
+            ...(mi.ingredients as any),
+            quantity: mi.quantity
+          })) || []
+        }))
+      };
+    })
+  );
+
+  return packetsWithMeals;
 }
 
 // Create a new packet
@@ -287,4 +301,4 @@ export const removePacketPriceOverride = withAuth(async (packetId: string) => {
 
   revalidatePath('/');
   return { success: true, data };
-});
+}); 

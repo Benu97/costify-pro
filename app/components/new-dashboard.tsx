@@ -984,8 +984,8 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
           onMealUpdated={async (updatedMeal) => {
             try {
               const fullMealData = await getMealWithIngredients(updatedMeal.id);
-              setLocalMeals(
-                localMeals.map((meal) => 
+            setLocalMeals(
+              localMeals.map((meal) => 
                   meal.id === updatedMeal.id ? fullMealData as MealWithIngredients : meal
                 )
               );
@@ -997,8 +997,8 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
               setLocalMeals(
                 localMeals.map((meal) => 
                   meal.id === updatedMeal.id ? { ...meal, ...updatedMeal } : meal
-                )
-              );
+              )
+            );
             }
           }}
         />
@@ -1030,8 +1030,8 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
           onPacketUpdated={async (updatedPacket) => {
             try {
               const fullPacketData = await getPacketWithMeals(updatedPacket.id);
-              setLocalPackets(
-                localPackets.map((packet) => 
+            setLocalPackets(
+              localPackets.map((packet) => 
                   packet.id === updatedPacket.id ? fullPacketData as PacketWithMeals : packet
                 )
               );
@@ -1040,8 +1040,8 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
               setLocalPackets(
                 localPackets.map((packet) => 
                   packet.id === updatedPacket.id ? { ...packet, ...updatedPacket } : packet
-                )
-              );
+              )
+            );
             }
           }}
         />

@@ -26,9 +26,13 @@ export function calculateMealPrice(meal: Meal, ingredients?: IngredientWithQuant
  * Shows override price, calculated price, or a helpful message
  */
 export function getMealPriceDisplay(meal: Meal, ingredients?: IngredientWithQuantity[]): string {
-  // If there's an override price, use it
-  if (meal.price_net_override !== null && meal.price_net_override !== undefined) {
-    return `€${meal.price_net_override.toFixed(2)}`;
+  // Handle null and undefined - treat 0 as a valid override
+  const override = meal.price_net_override;
+  const hasValidOverride = override !== null && override !== undefined && typeof override === 'number';
+  
+  // If there's a valid override price (including 0), use it
+  if (hasValidOverride) {
+    return `€${override.toFixed(2)}`;
   }
   
   // If ingredients are provided, calculate from them
@@ -47,9 +51,13 @@ export function getMealPriceDisplay(meal: Meal, ingredients?: IngredientWithQuan
  * For demo purposes, returns a default price if meals are not available
  */
 export function calculatePacketPrice(packet: Packet, meals?: Array<any>): number {
-  // If there's an override price, use it
-  if (packet.price_net_override !== null && packet.price_net_override !== undefined) {
-    return packet.price_net_override;
+  // Handle null and undefined - treat 0 as a valid override
+  const override = packet.price_net_override;
+  const hasValidOverride = override !== null && override !== undefined && typeof override === 'number';
+  
+  // If there's a valid override price (including 0), use it
+  if (hasValidOverride) {
+    return override;
   }
   
   // If meals are provided, calculate from them
@@ -67,9 +75,13 @@ export function calculatePacketPrice(packet: Packet, meals?: Array<any>): number
  * Shows override price, calculated price, or a helpful message
  */
 export function getPacketPriceDisplay(packet: Packet, meals?: Array<any>): string {
-  // If there's an override price, use it
-  if (packet.price_net_override !== null && packet.price_net_override !== undefined) {
-    return `€${packet.price_net_override.toFixed(2)}`;
+  // Handle null and undefined - treat 0 as a valid override  
+  const override = packet.price_net_override;
+  const hasValidOverride = override !== null && override !== undefined && typeof override === 'number';
+  
+  // If there's a valid override price (including 0), use it
+  if (hasValidOverride) {
+    return `€${override.toFixed(2)}`;
   }
   
   // If meals are provided, calculate from them

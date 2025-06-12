@@ -79,12 +79,12 @@ export function PacketDetailsDialog({
   const [mealQuantity, setMealQuantity] = useState<number>(1);
 
   const form = useForm<PacketFormValues>({
-    resolver: zodResolver(packetSchema),
+    resolver: zodResolver(packetSchema) as any,
     defaultValues: {
       name: '',
       description: '',
       price_net_override: null,
-    },
+    }
   });
 
   // Load packet data when dialog opens
@@ -194,10 +194,24 @@ export function PacketDetailsDialog({
     }
   };
 
-  // Calculate costs (simplified since we don't have full meal ingredient data)
-  const packetNetCost = packet?.price_net_override || (packet ? calcPacketNet(packet, packet.meals as any) : 0);
+  // Calculate costs with proper null handling and form reactivity
+  const formValues = form.watch();
+  const currentPriceOverride = formValues.price_net_override;
+  
+  // Add NaN protection to handle edge cases where form validation fails
+  const packetNetCost = (() => {
+    // If there's a valid override price (not null/undefined/NaN), use it
+    if (currentPriceOverride !== null && currentPriceOverride !== undefined && !isNaN(currentPriceOverride)) {
+      return currentPriceOverride;
+    }
+    // Otherwise calculate from meals
+    return packet ? calcPacketNet(packet, packet.meals as any) : 0;
+  })();
+    
   const totalMealsCost = packet ? packet.meals.reduce((total, meal) => {
-    const mealPrice = meal.price_net_override || calcMealNet(meal, meal.ingredients || []);
+    const mealPrice = (meal.price_net_override !== null && meal.price_net_override !== undefined) 
+      ? meal.price_net_override 
+      : calcMealNet(meal, meal.ingredients || []);
     return total + (mealPrice * meal.quantity);
   }, 0) : 0;
 
@@ -274,7 +288,11 @@ export function PacketDetailsDialog({
                             min="0"
                             placeholder="Leave empty to calculate from meals"
                             {...field}
-                            value={field.value || ''}
+                            value={field.value === null ? '' : field.value}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              field.onChange(value === '' ? null : parseFloat(value));
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -297,7 +315,7 @@ export function PacketDetailsDialog({
                         </div>
                         <div className="flex justify-between">
                           <span>Final Packet Cost:</span>
-                          <Badge variant="default">€{packetNetCost.toFixed(2)}</Badge>
+                          <Badge variant="default">€{(typeof packetNetCost === 'number' && !isNaN(packetNetCost) ? packetNetCost : 0).toFixed(2)}</Badge>
                         </div>
                         {packet.price_net_override && (
                           <p className="text-xs text-muted-foreground">
