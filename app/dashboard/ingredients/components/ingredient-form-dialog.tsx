@@ -7,7 +7,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle,
-  DialogFooter
+  DialogFooter,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -26,8 +27,11 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 import { IngredientFormValues, ingredientSchema } from '@/app/lib/validation-schemas';
 import { Ingredient } from '@/app/lib/pricing';
+import { Plus, Loader2, DollarSign, Package2 } from 'lucide-react';
 
 // Common unit types for ingredients
 const UNIT_OPTIONS = [
@@ -67,7 +71,6 @@ export function IngredientFormDialog({
       name: '',
       unit: '',
       price_net: 0,
-      category: '',
     },
   });
 
@@ -79,83 +82,118 @@ export function IngredientFormDialog({
     onSubmit(data);
   };
 
+  const currentPrice = form.watch('price_net');
+  const currentUnit = form.watch('unit');
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Package2 className="h-5 w-5" />
+            {title}
+            {currentUnit && (
+              <Badge variant="secondary" className="ml-2 font-mono">
+                {currentUnit}
+              </Badge>
+            )}
+          </DialogTitle>
+          <DialogDescription>
+            {defaultValues 
+              ? "Update ingredient details and pricing information"
+              : "Add a new ingredient to your inventory"
+            }
+          </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Flour" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="unit"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Unit</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name *</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a unit type" />
-                      </SelectTrigger>
+                      <Input 
+                        placeholder="e.g., Organic Flour, Fresh Basil" 
+                        {...field} 
+                        className="transition-all duration-200 focus:ring-2"
+                      />
                     </FormControl>
-                    <SelectContent>
-                      {UNIT_OPTIONS.map((unit) => (
-                        <SelectItem key={unit.value} value={unit.value}>
-                          {unit.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="price_net"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Price (€)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="1.99"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Category (Optional)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Dairy, Vegetables, Spices" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="unit"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Unit *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="transition-all duration-200 focus:ring-2">
+                            <SelectValue placeholder="Select unit type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="max-h-60">
+                          {UNIT_OPTIONS.map((unit) => (
+                            <SelectItem key={unit.value} value={unit.value}>
+                              {unit.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="price_net"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4" />
+                        Price per {currentUnit || 'unit'} (€)
+                      </FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="1.99"
+                          className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all duration-200 focus:ring-2"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+            
+            <Separator />
+            
+            {currentPrice > 0 && currentUnit && (
+              <div className="bg-primary/5 border border-primary/20 rounded-md p-4">
+                <div className="flex justify-between items-center text-sm">
+                  <span>Price Preview:</span>
+                  <Badge variant="default" className="text-base font-mono">
+                    €{Number(currentPrice).toFixed(2)} per {currentUnit}
+                  </Badge>
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  💡 This will be used to calculate meal costs automatically
+                </div>
+              </div>
+            )}
+            
             <DialogFooter>
               <Button 
                 type="button" 
@@ -165,8 +203,22 @@ export function IngredientFormDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : 'Save'}
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="min-w-[120px]"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {defaultValues ? 'Updating...' : 'Creating...'}
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {defaultValues ? 'Update Ingredient' : 'Create Ingredient'}
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>

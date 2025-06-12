@@ -40,7 +40,7 @@ export function PacketFormDialog({
   title
 }: PacketFormDialogProps) {
   const form = useForm<PacketFormValues>({
-    resolver: zodResolver(packetSchema),
+    resolver: zodResolver(packetSchema) as any,
     defaultValues: defaultValues ?? {
       name: '',
       description: '',
@@ -64,6 +64,7 @@ export function PacketFormDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            {/* Always show the name field */}
             <FormField
               control={form.control}
               name="name"
@@ -71,53 +72,70 @@ export function PacketFormDialog({
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Wedding Package" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
                     <Input 
-                      placeholder="Complete wedding catering package including appetizers, main course, and dessert" 
+                      placeholder="Wedding Package" 
                       {...field} 
-                      value={field.value || ''}
+                      autoFocus={!defaultValues} // Auto-focus for add dialog
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="price_net_override"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Price Override (€) - Optional</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="Leave empty to calculate from meals"
-                      {...field}
-                      value={field.value === null ? '' : field.value}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        field.onChange(value === '' ? null : parseFloat(value));
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            
+            {/* Only show additional fields when editing (defaultValues provided) */}
+            {defaultValues && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Complete wedding catering package including appetizers, main course, and dessert" 
+                          {...field} 
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="price_net_override"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Price Override (€) - Optional</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Leave empty to calculate from meals"
+                          className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          {...field}
+                          value={field.value === null ? '' : field.value}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(value === '' ? null : parseFloat(value));
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+            
+            {!defaultValues && (
+              <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                💡 <strong>Tip:</strong> After creating your packet, use the &quot;Edit&quot; button to add meals and set custom prices.
+              </div>
+            )}
             <DialogFooter>
               <Button 
                 type="button" 

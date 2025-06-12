@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { 
@@ -12,14 +12,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Form,
   FormControl,
@@ -38,9 +30,18 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Trash2, Save, Calculator } from 'lucide-react';
+import { 
+  Plus, 
+  Trash2, 
+  Save, 
+  Calculator, 
+  Search, 
+  Loader2, 
+  X,
+  ChefHat,
+  DollarSign
+} from 'lucide-react';
 import { MealFormValues, mealSchema } from '@/app/lib/validation-schemas';
 import { Meal, Ingredient, IngredientWithQuantity } from '@/app/lib/pricing';
 import { calcMealNet } from '@/app/lib/pricing';
@@ -76,11 +77,21 @@ export function MealDetailsDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [meal, setMeal] = useState<MealWithIngredients | null>(null);
   const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([]);
+  
+  // Enhanced search state
+  const [ingredientSearchQuery, setIngredientSearchQuery] = useState<string>('');
   const [selectedIngredientId, setSelectedIngredientId] = useState<string>('');
   const [ingredientQuantity, setIngredientQuantity] = useState<number>(1);
+  const [showIngredientSearch, setShowIngredientSearch] = useState(false);
+  const [selectedSearchIndex, setSelectedSearchIndex] = useState(-1);
+  const [isAddingIngredient, setIsAddingIngredient] = useState(false);
+  
+  // Refs for keyboard navigation
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const quantityInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<MealFormValues>({
-    resolver: zodResolver(mealSchema),
+    resolver: zodResolver(mealSchema) as any,
     defaultValues: {
       name: '',
       description: '',
@@ -94,6 +105,7 @@ export function MealDetailsDialog({
       loadMealData();
       loadAvailableIngredients();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, mealId]);
 
   // Update form when meal data changes
@@ -107,6 +119,70 @@ export function MealDetailsDialog({
       });
     }
   }, [meal, form]);
+
+  // Enhanced search functionality with memoization
+  const filteredIngredients = useMemo(() => {
+    if (!ingredientSearchQuery.trim() || !availableIngredients.length) return [];
+    
+    const query = ingredientSearchQuery.toLowerCase();
+    const usedIngredientIds = new Set(meal?.ingredients.map(ing => ing.id) || []);
+    
+    return availableIngredients
+      .filter(ingredient => 
+        !usedIngredientIds.has(ingredient.id) && (
+          ingredient.name.toLowerCase().includes(query) ||
+          ingredient.unit.toLowerCase().includes(query)
+        )
+      )
+      .slice(0, 8); // Limit results for performance
+  }, [ingredientSearchQuery, availableIngredients, meal?.ingredients]);
+
+  // Keyboard navigation for search results
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!showIngredientSearch || filteredIngredients.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedSearchIndex(prev => 
+          prev < filteredIngredients.length - 1 ? prev + 1 : 0
+        );
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedSearchIndex(prev => 
+          prev > 0 ? prev - 1 : filteredIngredients.length - 1
+        );
+      } else if (e.key === 'Enter' && selectedSearchIndex >= 0) {
+        e.preventDefault();
+        const selectedIngredient = filteredIngredients[selectedSearchIndex];
+        handleSelectIngredient(selectedIngredient);
+      } else if (e.key === 'Escape') {
+        setShowIngredientSearch(false);
+        setSelectedSearchIndex(-1);
+      }
+    };
+
+    if (showIngredientSearch) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [showIngredientSearch, filteredIngredients, selectedSearchIndex]);
+
+  // Click outside to close search
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest('[data-search-container]')) {
+        setShowIngredientSearch(false);
+        setSelectedSearchIndex(-1);
+      }
+    };
+
+    if (showIngredientSearch) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showIngredientSearch]);
 
   const loadMealData = async () => {
     if (!mealId) return;
@@ -129,6 +205,7 @@ export function MealDetailsDialog({
       setAvailableIngredients(ingredients as Ingredient[]);
     } catch (error) {
       console.error('Failed to load ingredients:', error);
+      toast.error('Failed to load ingredients');
     }
   };
 
@@ -137,15 +214,18 @@ export function MealDetailsDialog({
     
     setIsSubmitting(true);
     try {
-      const result = await updateMeal(data);
-      if (result.success && result.data) {
-        const updatedMeal = { ...meal, ...result.data };
-        setMeal(updatedMeal as MealWithIngredients);
-        if (onMealUpdated) {
-          onMealUpdated(result.data as Meal);
-        }
-        toast.success('Meal updated successfully');
+      data.id = meal.id;
+      await updateMeal(data);
+      
+      // Update local state
+      const updatedMeal = { ...meal, ...data };
+      setMeal(updatedMeal);
+      
+      if (onMealUpdated) {
+        onMealUpdated(updatedMeal);
       }
+      
+      toast.success('Meal updated successfully');
     } catch (error) {
       console.error('Failed to update meal:', error);
       toast.error('Failed to update meal');
@@ -154,41 +234,80 @@ export function MealDetailsDialog({
     }
   };
 
-  const handleAddIngredient = async () => {
-    if (!meal || !selectedIngredientId || ingredientQuantity <= 0) return;
+  const handleSelectIngredient = (ingredient: Ingredient) => {
+    setSelectedIngredientId(ingredient.id);
+    setIngredientSearchQuery(ingredient.name);
+    setShowIngredientSearch(false);
+    setSelectedSearchIndex(-1);
+    
+    // Focus quantity input after selection
+    setTimeout(() => {
+      quantityInputRef.current?.focus();
+      quantityInputRef.current?.select();
+    }, 100);
+  };
 
+  const handleAddIngredient = async () => {
+    if (!selectedIngredientId || ingredientQuantity <= 0 || !meal) return;
+
+    setIsAddingIngredient(true);
     try {
       await addMealIngredient(meal.id, selectedIngredientId, ingredientQuantity);
-      await loadMealData(); // Reload to get updated data
+      
+      // Refresh meal data to get updated ingredients
+      await loadMealData();
+      
+      // Reset form
+      setIngredientSearchQuery('');
       setSelectedIngredientId('');
       setIngredientQuantity(1);
-      toast.success('Ingredient added to meal');
+      
+      toast.success('Ingredient added successfully');
+      
+      // Focus back to search input
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 100);
     } catch (error) {
       console.error('Failed to add ingredient:', error);
       toast.error('Failed to add ingredient');
+    } finally {
+      setIsAddingIngredient(false);
     }
   };
 
-  const handleUpdateIngredientQuantity = async (ingredientId: string, newQuantity: number) => {
-    if (!meal || newQuantity <= 0) return;
+  // Debounced quantity update for better UX
+  const debouncedUpdateQuantity = useCallback(
+    debounce(async (ingredientId: string, newQuantity: number) => {
+      if (!meal) return;
+      
+      try {
+        await updateMealIngredient(meal.id, ingredientId, newQuantity);
+        await loadMealData();
+        toast.success('Quantity updated');
+      } catch (error) {
+        console.error('Failed to update quantity:', error);
+        toast.error('Failed to update quantity');
+      }
+    }, 500),
+    [meal]
+  );
 
-    try {
-      await updateMealIngredient(meal.id, ingredientId, newQuantity);
-      await loadMealData(); // Reload to get updated data
-      toast.success('Ingredient quantity updated');
-    } catch (error) {
-      console.error('Failed to update ingredient:', error);
-      toast.error('Failed to update ingredient');
+  const handleUpdateIngredientQuantity = (ingredientId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      toast.error('Quantity must be greater than 0');
+      return;
     }
+    debouncedUpdateQuantity(ingredientId, newQuantity);
   };
 
   const handleRemoveIngredient = async (ingredientId: string) => {
     if (!meal) return;
-
+    
     try {
       await removeMealIngredient(meal.id, ingredientId);
-      await loadMealData(); // Reload to get updated data
-      toast.success('Ingredient removed from meal');
+      await loadMealData();
+      toast.success('Ingredient removed');
     } catch (error) {
       console.error('Failed to remove ingredient:', error);
       toast.error('Failed to remove ingredient');
@@ -198,24 +317,21 @@ export function MealDetailsDialog({
   const handleRemovePriceOverride = async () => {
     if (!meal) return;
     
-    setIsSubmitting(true);
     try {
-      const result = await removeMealPriceOverride(meal.id);
-      if (result.success && result.data) {
-        const updatedMeal = { ...meal, price_net_override: null };
-        setMeal(updatedMeal as MealWithIngredients);
-        // Update the form to reflect the change
-        form.setValue('price_net_override', null);
-        if (onMealUpdated) {
-          onMealUpdated(result.data as Meal);
-        }
-        toast.success('Price override removed - meal will now calculate from ingredients');
+      await removeMealPriceOverride(meal.id);
+      
+      const updatedMeal = { ...meal, price_net_override: null };
+      setMeal(updatedMeal);
+      form.setValue('price_net_override', null);
+      
+      if (onMealUpdated) {
+        onMealUpdated(updatedMeal);
       }
+      
+      toast.success('Price override removed');
     } catch (error) {
       console.error('Failed to remove price override:', error);
       toast.error('Failed to remove price override');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -243,54 +359,43 @@ export function MealDetailsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-5xl max-h-[95vh] overflow-hidden flex flex-col">
         <DialogHeader>
-          <DialogTitle>Meal Details - {meal?.name || 'Loading...'}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <ChefHat className="h-5 w-5" />
+            {meal?.name || 'Loading...'} 
+            {meal && (
+              <Badge variant="outline" className="ml-2">
+                {meal.ingredients.length} ingredient{meal.ingredients.length !== 1 ? 's' : ''}
+              </Badge>
+            )}
+          </DialogTitle>
         </DialogHeader>
         
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center p-8">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-              <p className="mt-2 text-sm text-muted-foreground">Loading meal details...</p>
+          <div className="flex-1 flex items-center justify-center p-12">
+            <div className="text-center space-y-4">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+              <p className="text-sm text-muted-foreground">Loading meal details...</p>
             </div>
           </div>
         ) : meal ? (
-          <Tabs defaultValue="details" className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="details">Basic Info</TabsTrigger>
-              <TabsTrigger value="ingredients">Ingredients & Costs</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="details" className="flex-1 overflow-auto">
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSaveMeal)} className="space-y-4">
+          <div className="flex-1 overflow-auto space-y-6">
+            {/* Enhanced Basic Info Section */}
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleSaveMeal)} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Meal Name</FormLabel>
+                        <FormLabel>Meal Name *</FormLabel>
                         <FormControl>
-                          <Input placeholder="Spaghetti Bolognese" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea 
-                            placeholder="Describe the meal..."
-                            className="resize-none"
-                            rows={3}
-                            {...field}
-                            value={field.value || ''}
+                          <Input 
+                            placeholder="e.g., Spaghetti Bolognese" 
+                            {...field} 
+                            className="transition-all duration-200 focus:ring-2"
                           />
                         </FormControl>
                         <FormMessage />
@@ -302,14 +407,18 @@ export function MealDetailsDialog({
                     name="price_net_override"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Price Override (€)</FormLabel>
+                        <FormLabel className="flex items-center gap-2">
+                          <DollarSign className="h-4 w-4" />
+                          Price Override (€)
+                        </FormLabel>
                         <FormControl>
                           <div className="flex gap-2">
                             <Input 
                               type="number"
                               step="0.01"
                               min="0"
-                              placeholder="Leave empty to calculate from ingredients"
+                              placeholder="Leave empty to auto-calculate"
+                              className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all duration-200 focus:ring-2"
                               {...field}
                               value={field.value === null ? '' : field.value}
                               onChange={(e) => {
@@ -324,9 +433,10 @@ export function MealDetailsDialog({
                                 size="sm"
                                 onClick={handleRemovePriceOverride}
                                 disabled={isSubmitting}
-                                className="whitespace-nowrap"
+                                className="whitespace-nowrap hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                                title="Remove price override"
                               >
-                                Clear Override
+                                <X className="h-4 w-4" />
                               </Button>
                             )}
                           </div>
@@ -335,100 +445,137 @@ export function MealDetailsDialog({
                       </FormItem>
                     )}
                   />
-                  
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Calculator className="h-4 w-4" />
-                        Cost Summary
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span>Total Ingredient Cost:</span>
-                          <Badge variant="outline">€{totalIngredientCost.toFixed(2)}</Badge>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Final Meal Cost:</span>
-                          <Badge variant="default">€{(typeof mealNetCost === 'number' && !isNaN(mealNetCost) ? mealNetCost : 0).toFixed(2)}</Badge>
-                        </div>
-                        {meal.price_net_override && (
-                          <p className="text-xs text-muted-foreground">
-                            Using price override instead of calculated cost
-                          </p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </form>
-              </Form>
-            </TabsContent>
-            
-            <TabsContent value="ingredients" className="flex-1 overflow-auto space-y-4">
-              {/* Add Ingredient Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Ingredient
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-2">
-                    <Select value={selectedIngredientId} onValueChange={setSelectedIngredientId}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select ingredient" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availableIngredients
-                          .filter(ing => !meal.ingredients.find(mi => mi.id === ing.id))
-                          .map((ingredient) => (
-                            <SelectItem key={ingredient.id} value={ingredient.id}>
-                              {ingredient.name} ({ingredient.unit}) - €{ingredient.price_net.toFixed(2)}
-                            </SelectItem>
+                </div>
+              </form>
+            </Form>
+
+            <Separator />
+
+            {/* Enhanced Add Ingredient Section */}
+            <Card className="transition-all duration-200 hover:shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Plus className="h-4 w-4 text-green-600" />
+                  Add Ingredient
+                </CardTitle>
+                <CardDescription>
+                  Search and add ingredients to calculate meal costs automatically
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex gap-2" data-search-container>
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        ref={searchInputRef}
+                        placeholder="Search ingredients... (try typing 'tom' for tomato)"
+                        value={ingredientSearchQuery}
+                        onChange={(e) => {
+                          setIngredientSearchQuery(e.target.value);
+                          setShowIngredientSearch(e.target.value.length > 0);
+                          setSelectedSearchIndex(-1);
+                        }}
+                        onFocus={() => setShowIngredientSearch(ingredientSearchQuery.length > 0)}
+                        className="pl-10 transition-all duration-200 focus:ring-2"
+                        disabled={isAddingIngredient}
+                      />
+                      {showIngredientSearch && filteredIngredients.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg max-h-60 overflow-auto animate-in fade-in-0 zoom-in-95 duration-200">
+                          {filteredIngredients.map((ingredient, index) => (
+                            <div
+                              key={ingredient.id}
+                              className={`p-3 cursor-pointer border-b last:border-b-0 transition-colors duration-150 ${
+                                index === selectedSearchIndex
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'hover:bg-muted'
+                              }`}
+                              onClick={() => handleSelectIngredient(ingredient)}
+                            >
+                              <div className="font-medium">{ingredient.name}</div>
+                              <div className={`text-sm ${
+                                index === selectedSearchIndex ? 'text-primary-foreground/80' : 'text-muted-foreground'
+                              }`}>
+                                {ingredient.unit} • €{ingredient.price_net.toFixed(2)} per unit
+                              </div>
+                            </div>
                           ))}
-                      </SelectContent>
-                    </Select>
+                        </div>
+                      )}
+                      {showIngredientSearch && ingredientSearchQuery.length > 0 && filteredIngredients.length === 0 && (
+                        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-background border rounded-md shadow-lg p-3 text-center text-muted-foreground">
+                          No ingredients found matching &quot;{ingredientSearchQuery}&quot;
+                        </div>
+                      )}
+                    </div>
                     <Input
+                      ref={quantityInputRef}
                       type="number"
                       min="0.01"
                       step="0.01"
                       value={ingredientQuantity}
                       onChange={(e) => setIngredientQuantity(Number(e.target.value))}
                       placeholder="Qty"
-                      className="w-20"
+                      className="w-24 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all duration-200 focus:ring-2"
+                      disabled={isAddingIngredient}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && selectedIngredientId && ingredientQuantity > 0) {
+                          handleAddIngredient();
+                        }
+                      }}
                     />
                     <Button 
                       onClick={handleAddIngredient}
-                      disabled={!selectedIngredientId || ingredientQuantity <= 0}
+                      disabled={!selectedIngredientId || ingredientQuantity <= 0 || isAddingIngredient}
+                      className="whitespace-nowrap transition-all duration-200"
                     >
-                      Add
+                      {isAddingIngredient ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Adding...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add
+                        </>
+                      )}
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Ingredients List */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Current Ingredients</CardTitle>
-                  <CardDescription>
-                    Manage the ingredients in this meal
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {meal.ingredients.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      No ingredients added yet. Add some ingredients to calculate costs.
+                  {filteredIngredients.length === 0 && ingredientSearchQuery.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      💡 Tip: Use keyboard arrows to navigate results and Enter to select
                     </p>
-                  ) : (
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Enhanced Ingredients List */}
+            <Card className="transition-all duration-200 hover:shadow-md">
+              <CardHeader>
+                <CardTitle>Current Ingredients</CardTitle>
+                <CardDescription>
+                  Manage quantities and remove ingredients • Click in quantity field to edit
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {meal.ingredients.length === 0 ? (
+                  <div className="text-center py-12 space-y-3">
+                    <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto">
+                      <ChefHat className="h-6 w-6 text-muted-foreground" />
+                    </div>
+                    <p className="text-muted-foreground">No ingredients added yet</p>
+                    <p className="text-sm text-muted-foreground">Add ingredients above to calculate meal costs automatically</p>
+                  </div>
+                ) : (
+                  <div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
                           <TableHead>Ingredient</TableHead>
                           <TableHead>Unit</TableHead>
-                          <TableHead>Quantity</TableHead>
+                          <TableHead className="w-[120px]">Quantity</TableHead>
                           <TableHead className="text-right">Unit Price</TableHead>
                           <TableHead className="text-right">Total Cost</TableHead>
                           <TableHead className="w-[50px]">Actions</TableHead>
@@ -436,25 +583,30 @@ export function MealDetailsDialog({
                       </TableHeader>
                       <TableBody>
                         {meal.ingredients.map((ingredient) => (
-                          <TableRow key={ingredient.id}>
+                          <TableRow key={ingredient.id} className="hover:bg-muted/50 transition-colors">
                             <TableCell className="font-medium">{ingredient.name}</TableCell>
-                            <TableCell>{ingredient.unit}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">{ingredient.unit}</Badge>
+                            </TableCell>
                             <TableCell>
                               <Input
                                 type="number"
                                 min="0.01"
                                 step="0.01"
-                                value={ingredient.quantity}
-                                onChange={(e) => 
-                                  handleUpdateIngredientQuantity(ingredient.id, Number(e.target.value))
-                                }
-                                className="w-20"
+                                defaultValue={ingredient.quantity}
+                                onBlur={(e) => {
+                                  const newQuantity = Number(e.target.value);
+                                  if (newQuantity !== ingredient.quantity && newQuantity > 0) {
+                                    handleUpdateIngredientQuantity(ingredient.id, newQuantity);
+                                  }
+                                }}
+                                className="w-20 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all duration-200 focus:ring-2"
                               />
                             </TableCell>
                             <TableCell className="text-right">
                               €{ingredient.price_net.toFixed(2)}
                             </TableCell>
-                            <TableCell className="text-right">
+                            <TableCell className="text-right font-medium">
                               €{(ingredient.price_net * ingredient.quantity).toFixed(2)}
                             </TableCell>
                             <TableCell>
@@ -462,7 +614,8 @@ export function MealDetailsDialog({
                                 variant="ghost"
                                 size="icon"
                                 onClick={() => handleRemoveIngredient(ingredient.id)}
-                                className="text-destructive"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
+                                title="Remove ingredient"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -471,30 +624,91 @@ export function MealDetailsDialog({
                         ))}
                       </TableBody>
                     </Table>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-          </Tabs>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Enhanced Cost Summary */}
+            <Card className="border-primary/20 bg-primary/5 transition-all duration-200 hover:shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calculator className="h-4 w-4 text-primary" />
+                  Cost Summary
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Total Ingredient Cost:</span>
+                      <Badge variant="outline" className="text-base font-mono">
+                        €{totalIngredientCost.toFixed(2)}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Final Meal Cost:</span>
+                      <Badge variant="default" className="text-base font-mono">
+                        €{(typeof mealNetCost === 'number' && !isNaN(mealNetCost) ? mealNetCost : 0).toFixed(2)}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    {meal.price_net_override !== null ? (
+                      <p className="text-orange-600">🔒 Using custom price override</p>
+                    ) : (
+                      <p className="text-green-600">🧮 Auto-calculated from ingredients</p>
+                    )}
+                    {meal.ingredients.length > 0 && (
+                      <p>Average cost per ingredient: €{(totalIngredientCost / meal.ingredients.length).toFixed(2)}</p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         ) : null}
         
-        <DialogFooter>
+        <DialogFooter className="flex justify-between">
           <Button 
             type="button" 
             variant="outline" 
             onClick={() => onOpenChange(false)}
+            disabled={isSubmitting}
           >
             Close
           </Button>
           <Button 
             onClick={form.handleSubmit(handleSaveMeal)}
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLoading}
+            className="min-w-[120px]"
           >
-            <Save className="h-4 w-4 mr-2" />
-            {isSubmitting ? 'Saving...' : 'Save Changes'}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Save Changes
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
+}
+
+// Utility function for debouncing
+function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
+  };
 } 

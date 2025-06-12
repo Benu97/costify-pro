@@ -40,7 +40,7 @@ export function MealFormDialog({
   title
 }: MealFormDialogProps) {
   const form = useForm<MealFormValues>({
-    resolver: zodResolver(mealSchema),
+    resolver: zodResolver(mealSchema) as any,
     defaultValues: defaultValues ?? {
       name: '',
       description: '',
@@ -64,6 +64,7 @@ export function MealFormDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            {/* Always show the name field */}
             <FormField
               control={form.control}
               name="name"
@@ -71,53 +72,70 @@ export function MealFormDialog({
                 <FormItem>
                   <FormLabel>Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="Pasta Carbonara" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
                     <Input 
-                      placeholder="Classic Italian pasta dish with eggs, cheese, pancetta, and pepper" 
+                      placeholder="Pasta Carbonara" 
                       {...field} 
-                      value={field.value || ''}
+                      autoFocus={!defaultValues} // Auto-focus for add dialog
                     />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="price_net_override"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Price Override (€) - Optional</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      placeholder="Leave empty to calculate from ingredients"
-                      {...field}
-                      value={field.value === null ? '' : field.value}
-                      onChange={(e) => {
-                        const value = e.target.value;
-                        field.onChange(value === '' ? null : parseFloat(value));
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            
+            {/* Only show additional fields when editing (defaultValues provided) */}
+            {defaultValues && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Classic Italian pasta dish with eggs, cheese, pancetta, and pepper" 
+                          {...field} 
+                          value={field.value || ''}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="price_net_override"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Price Override (€) - Optional</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder="Leave empty to calculate from ingredients"
+                          className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                          {...field}
+                          value={field.value === null ? '' : field.value}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(value === '' ? null : parseFloat(value));
+                          }}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+            
+            {!defaultValues && (
+              <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                💡 <strong>Tip:</strong> After creating your meal, use the &quot;Edit&quot; button to add ingredients and set custom prices.
+              </div>
+            )}
             <DialogFooter>
               <Button 
                 type="button" 

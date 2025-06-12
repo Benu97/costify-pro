@@ -136,7 +136,7 @@ export function AddToCartDialog({
                 onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
                 min="1"
                 max="999"
-                className="w-20 text-center"
+                className="w-20 text-center [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <Button
                 variant="outline"
@@ -161,6 +161,7 @@ export function AddToCartDialog({
               min="0"
               max="1000"
               step="0.1"
+              className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               required
             />
             <p className="text-xs text-muted-foreground">

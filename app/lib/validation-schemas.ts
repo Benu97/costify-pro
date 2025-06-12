@@ -18,12 +18,11 @@ export const mealSchema = z.object({
   description: z.string().optional().nullable(),
   price_net_override: z.preprocess(
     (val) => {
-      // Convert empty string to null, otherwise attempt to coerce to number
       if (val === '' || val === undefined) return null;
-      return val;
+      return typeof val === 'string' ? parseFloat(val) : val;
     },
-    z.coerce.number().min(0, 'Price must be a positive number').optional().nullable()
-  ),
+    z.number().min(0, 'Price must be a positive number').nullable()
+  ).optional(),
 });
 
 export type MealFormValues = z.infer<typeof mealSchema>;
@@ -35,12 +34,11 @@ export const packetSchema = z.object({
   description: z.string().optional().nullable(),
   price_net_override: z.preprocess(
     (val) => {
-      // Convert empty string to null, otherwise attempt to coerce to number
       if (val === '' || val === undefined) return null;
-      return val;
+      return typeof val === 'string' ? parseFloat(val) : val;
     },
-    z.coerce.number().min(0, 'Price must be a positive number').optional().nullable()
-  ),
+    z.number().min(0, 'Price must be a positive number').nullable()
+  ).optional(),
 });
 
 export type PacketFormValues = z.infer<typeof packetSchema>;
