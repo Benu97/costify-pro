@@ -18,6 +18,7 @@ import {
   Trash2, 
   Package,
   Utensils,
+  Wrench,
   Download,
   Edit,
   ChevronRight,
@@ -102,7 +103,7 @@ export default function CartSidebar() {
         id: item.id,
         name: item.details?.name || 'Unknown Item',
         description: item.details?.description,
-        type: item.item_type as 'meal' | 'packet',
+        type: item.item_type as 'meal' | 'packet' | 'service',
         quantity: item.quantity,
         basePrice: item.netPrice / (1 + item.markup_pct / 100), // Calculate base price from net price
         markupPct: item.markup_pct,
@@ -257,6 +258,8 @@ export default function CartSidebar() {
                                 <div className="p-2 rounded-md flex-shrink-0">
                                   {item.item_type === 'meal' ? (
                                     <Utensils className="h-5 w-5 text-blue-600" />
+                                  ) : item.item_type === 'service' ? (
+                                    <Wrench className="h-5 w-5 text-orange-600" />
                                   ) : (
                                     <Package className="h-5 w-5 text-purple-600" />
                                   )}
@@ -359,6 +362,8 @@ export default function CartSidebar() {
                                 <div className="p-2 rounded-md flex-shrink-0">
                                   {item.item_type === 'meal' ? (
                                     <Utensils className="h-5 w-5 text-blue-600" />
+                                  ) : item.item_type === 'service' ? (
+                                    <Wrench className="h-5 w-5 text-orange-600" />
                                   ) : (
                                     <Package className="h-5 w-5 text-purple-600" />
                                   )}
@@ -450,7 +455,7 @@ export function CartSummaryFixed() {
         id: item.id,
         name: item.details?.name || 'Unknown Item',
         description: item.details?.description,
-        type: item.item_type as 'meal' | 'packet',
+        type: item.item_type as 'meal' | 'packet' | 'service',
         quantity: item.quantity,
         basePrice: item.netPrice / (1 + item.markup_pct / 100), // Calculate base price from net price
         markupPct: item.markup_pct,

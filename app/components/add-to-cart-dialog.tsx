@@ -22,8 +22,8 @@ interface AddToCartDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   item: { id: string; name: string; description?: string | null; price_net_override?: number | null; price_net?: number } | null;
-  itemType: 'meal' | 'packet' | null;
-  onAddToCart: (itemId: string, itemType: 'meal' | 'packet', quantity: number, markupPct: number) => Promise<void>;
+  itemType: 'meal' | 'packet' | 'service' | null;
+  onAddToCart: (itemId: string, itemType: 'meal' | 'packet' | 'service', quantity: number, markupPct: number) => Promise<void>;
 }
 
 export function AddToCartDialog({ 
@@ -50,6 +50,8 @@ export function AddToCartDialog({
   // Calculate base price (simplified for now)
   const basePrice = itemType === 'meal' 
     ? calculateMealPrice(item as any) // Type assertion since we know it's a meal
+    : itemType === 'service'
+    ? (item.price_net || 0) // For services, use direct price
     : (item.price_net_override || 0); // For packets, use override or 0
   const hasValidPrice = basePrice > 0;
   
@@ -116,6 +118,8 @@ export function AddToCartDialog({
             <div className="p-2 rounded-lg bg-muted/50">
               {itemType === 'meal' ? (
                 <Utensils className="h-5 w-5 text-blue-600" />
+              ) : itemType === 'service' ? (
+                <Wrench className="h-5 w-5 text-orange-600" />
               ) : (
                 <Package className="h-5 w-5 text-purple-600" />
               )}
@@ -126,7 +130,7 @@ export function AddToCartDialog({
                 <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
               )}
               <Badge variant="outline" className="mt-2">
-                {itemType === 'meal' ? 'Meal' : 'Packet'}
+                {itemType === 'meal' ? 'Meal' : itemType === 'service' ? 'Service' : 'Packet'}
               </Badge>
             </div>
           </div>

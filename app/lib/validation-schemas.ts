@@ -57,7 +57,7 @@ export type PacketFormValues = z.infer<typeof packetSchema>;
 export const cartItemSchema = z.object({
   id: z.string().optional(),
   cart_id: z.string(),
-  item_type: z.enum(['meal', 'packet']),
+  item_type: z.enum(['meal', 'packet', 'service']),
   item_id: z.string(),
   markup_pct: z.coerce.number().min(0).default(0),
 });

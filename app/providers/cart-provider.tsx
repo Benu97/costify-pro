@@ -38,7 +38,7 @@ interface CartContextState {
   cartItems: DetailedCartItem[];
   isLoading: boolean;
   cartSummary: CartSummary;
-  addItem: (itemType: 'meal' | 'packet', itemId: string, quantity: number, markupPct: number) => Promise<void>;
+  addItem: (itemType: 'meal' | 'packet' | 'service', itemId: string, quantity: number, markupPct: number) => Promise<void>;
   updateItemQuantity: (itemId: string, quantity: number) => Promise<void>;
   updateItemMarkup: (itemId: string, markupPct: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
@@ -134,6 +134,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               // For now, fallback to 0 if no override
               netPrice = 0;
             }
+          } else if (item.item_type === 'service') {
+            // For services, use the price_net directly
+            const serviceDetails = item.details;
+            if (serviceDetails?.price_net !== null && serviceDetails?.price_net !== undefined) {
+              netPrice = serviceDetails.price_net;
+            }
           }
           
           const grossPrice = netPrice * (1 + (item.markup_pct || 0) / 100);
@@ -181,7 +187,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [loadCart]);
 
   // Add item to cart with quantity (optimized)
-  const addItem = async (itemType: 'meal' | 'packet', itemId: string, quantity: number, markupPct: number) => {
+  const addItem = async (itemType: 'meal' | 'packet' | 'service', itemId: string, quantity: number, markupPct: number) => {
     if (!cart) return;
     
     try {

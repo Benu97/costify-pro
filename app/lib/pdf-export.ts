@@ -4,7 +4,7 @@ export interface CartItemForPDF {
   id: string;
   name: string;
   description?: string;
-  type: 'meal' | 'packet';
+  type: 'meal' | 'packet' | 'service';
   quantity: number;
   basePrice: number;
   markupPct: number;

@@ -79,7 +79,7 @@ export const getCartItems = withAuth(async (cartId: string) => {
           ...item,
           details: meal
         };
-      } else {
+      } else if (item.item_type === 'packet') {
         const { data: packet } = await supabaseAdmin
           .from('packets')
           .select('*, packet_meals(*, meals(*, meal_ingredients(*, ingredients(*))))')
@@ -89,6 +89,23 @@ export const getCartItems = withAuth(async (cartId: string) => {
         return {
           ...item,
           details: packet
+        };
+      } else if (item.item_type === 'service') {
+        const { data: service } = await supabaseAdmin
+          .from('services')
+          .select('*')
+          .eq('id', item.item_id)
+          .single();
+        
+        return {
+          ...item,
+          details: service
+        };
+      } else {
+        // Fallback for unknown item types
+        return {
+          ...item,
+          details: null
         };
       }
     })
@@ -203,7 +220,7 @@ export const finalizeCart = withAuth(async (cartId: string) => {
   return { success: true, newCartId: newCart.id };
 });
 
-// Search meals and packets for adding to cart
+// Search meals, packets, and services for adding to cart
 export const searchItems = withAuth(async (query: string) => {
   const supabase = createServerClient();
   
@@ -231,9 +248,22 @@ export const searchItems = withAuth(async (query: string) => {
     console.error('Error searching packets:', packetsError);
   }
 
+  // Search services
+  const { data: services, error: servicesError } = await supabase
+    .from('services')
+    .select('id, name, description')
+    .ilike('name', `%${query}%`)
+    .order('name')
+    .limit(5);
+
+  if (servicesError) {
+    console.error('Error searching services:', servicesError);
+  }
+
   return {
     meals: meals || [],
-    packets: packets || []
+    packets: packets || [],
+    services: services || []
   };
 });
 
@@ -290,9 +320,13 @@ export const getCartItemsOptimized = withAuth(async (cartId: string) => {
   const packetIds = cartItems
     .filter(item => item.item_type === 'packet')
     .map(item => item.item_id);
+    
+  const serviceIds = cartItems
+    .filter(item => item.item_type === 'service')
+    .map(item => item.item_id);
 
-  // Fetch all meals and packets in batches
-  const [mealsData, packetsData] = await Promise.all([
+  // Fetch all meals, packets, and services in batches
+  const [mealsData, packetsData, servicesData] = await Promise.all([
     mealIds.length > 0 
       ? supabaseAdmin
           .from('meals')
@@ -305,19 +339,29 @@ export const getCartItemsOptimized = withAuth(async (cartId: string) => {
           .from('packets')
           .select('*, packet_meals(*, meals(*, meal_ingredients(*, ingredients(*))))')
           .in('id', packetIds)
+      : { data: [] },
+      
+    serviceIds.length > 0
+      ? supabaseAdmin
+          .from('services')
+          .select('*')
+          .in('id', serviceIds)
       : { data: [] }
   ]);
 
   // Create lookup maps for efficient access
   const mealsMap = new Map((mealsData.data || []).map(meal => [meal.id, meal]));
   const packetsMap = new Map((packetsData.data || []).map(packet => [packet.id, packet]));
+  const servicesMap = new Map((servicesData.data || []).map(service => [service.id, service]));
 
   // Enhance cart items with details
   const enhancedItems = cartItems.map(item => ({
     ...item,
     details: item.item_type === 'meal' 
       ? mealsMap.get(item.item_id)
-      : packetsMap.get(item.item_id)
+      : item.item_type === 'packet'
+      ? packetsMap.get(item.item_id)
+      : servicesMap.get(item.item_id)
   }));
 
   return enhancedItems;

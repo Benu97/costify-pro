@@ -55,7 +55,7 @@ export type Cart = {
 export type CartItem = {
   id: string;
   cart_id: string;
-  item_type: 'meal' | 'packet';
+  item_type: 'meal' | 'packet' | 'service';
   item_id: string;
   markup_pct: number;
   created_at: string;
@@ -80,7 +80,7 @@ export type MealWithQuantity = Meal & { quantity: number };
 export type MealWithIngredients = Meal & { ingredients: IngredientWithQuantity[] };
 export type PacketWithMeals = Packet & { meals: MealWithQuantity[] };
 export type CartItemWithDetails = CartItem & { 
-  details: (MealWithIngredients | PacketWithMeals);
+  details: (MealWithIngredients | PacketWithMeals | Service);
 };
 
 // Cart summary type
@@ -199,9 +199,12 @@ export function calcCartSummary<T extends CartItemWithDetails[]>(
     if (item.item_type === 'meal') {
       const mealWithIngredients = item.details as MealWithIngredients;
       itemNet = calcMealNet(mealWithIngredients, mealWithIngredients.ingredients);
-    } else {
+    } else if (item.item_type === 'packet') {
       const packetWithMeals = item.details as PacketWithMeals;
       itemNet = calcPacketNet(packetWithMeals, packetWithMeals.meals as any);
+    } else if (item.item_type === 'service') {
+      const service = item.details as Service;
+      itemNet = service.price_net;
     }
     
     const itemGross = itemNet * (1 + item.markup_pct / 100);
