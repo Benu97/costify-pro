@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Pencil, Trash2, MoreHorizontal, Eye, Copy, ShoppingCart } from 'lucide-react';
 import { CrudToolbar } from '@/app/components/CrudToolbar';
-import { Packet } from '@/app/lib/pricing';
+import { PacketWithMeals } from '@/app/lib/pricing';
 import { PacketFormValues } from '@/app/lib/validation-schemas';
 import { createPacket, deletePacket, updatePacket } from '@/app/actions/packets';
 import { PacketFormDialog } from './packet-form-dialog';
@@ -33,19 +33,19 @@ import { toast } from 'sonner';
 import { useTranslations } from '@/app/providers/language-provider';
 
 interface PacketsDataTableProps {
-  initialPackets: Packet[];
+  initialPackets: PacketWithMeals[];
 }
 
 export default function PacketsDataTable({ initialPackets }: PacketsDataTableProps) {
   const t = useTranslations();
   const router = useRouter();
-  const [packets, setPackets] = useState<Packet[]>(initialPackets);
+  const [packets, setPackets] = useState<PacketWithMeals[]>(initialPackets);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isCartDialogOpen, setIsCartDialogOpen] = useState(false);
-  const [currentPacket, setCurrentPacket] = useState<Packet | null>(null);
+  const [currentPacket, setCurrentPacket] = useState<PacketWithMeals | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddNew = () => {
@@ -56,33 +56,33 @@ export default function PacketsDataTable({ initialPackets }: PacketsDataTablePro
     router.refresh();
   };
 
-  const handleEdit = (packet: Packet) => {
+  const handleEdit = (packet: PacketWithMeals) => {
     setCurrentPacket(packet);
     setIsEditDialogOpen(true);
   };
 
-  const handleDelete = (packet: Packet) => {
+  const handleDelete = (packet: PacketWithMeals) => {
     setCurrentPacket(packet);
     setIsDeleteDialogOpen(true);
   };
 
-  const handleViewDetails = (packet: Packet) => {
+  const handleViewDetails = (packet: PacketWithMeals) => {
     setCurrentPacket(packet);
     setIsDetailsDialogOpen(true);
   };
 
-  const handleAddToCart = (packet: Packet) => {
+  const handleAddToCart = (packet: PacketWithMeals) => {
     setCurrentPacket(packet);
     setIsCartDialogOpen(true);
   };
 
-  const handleCartSubmit = async (packet: Packet, quantity: number, markupPercentage: number) => {
+  const handleCartSubmit = async (packet: PacketWithMeals, quantity: number, markupPercentage: number) => {
     // TODO: Implement actual cart functionality
     console.log('Adding to cart:', { packet: packet.name, quantity, markupPercentage });
     // This should integrate with your cart context/state management
   };
 
-  const handleDuplicate = async (packet: Packet) => {
+  const handleDuplicate = async (packet: PacketWithMeals) => {
     const duplicateData: PacketFormValues = {
       name: `${packet.name} (Copy)`,
       description: packet.description,
@@ -93,15 +93,20 @@ export default function PacketsDataTable({ initialPackets }: PacketsDataTablePro
     try {
       const result = await createPacket(duplicateData);
       if (result.success && result.data) {
-        setPackets([...packets, result.data as Packet]);
-        toast.success('Packet duplicated successfully', {
-          description: `${duplicateData.name} has been created`
+        // Convert the basic Packet to PacketWithMeals with empty meals
+        const newPacketWithMeals: PacketWithMeals = {
+          ...(result.data as any),
+          meals: []
+        };
+        setPackets([...packets, newPacketWithMeals]);
+        toast.success(t('messages.packetDuplicatedSuccessfully'), {
+          description: t('messages.packetCreatedDescription', { name: duplicateData.name })
         });
       }
     } catch (error) {
       console.error('Failed to duplicate packet:', error);
-      toast.error('Failed to duplicate packet', {
-        description: 'Please try again'
+      toast.error(t('messages.failedToDuplicatePacket'), {
+        description: t('messages.pleaseRetry')
       });
     } finally {
       setIsSubmitting(false);
@@ -113,16 +118,21 @@ export default function PacketsDataTable({ initialPackets }: PacketsDataTablePro
     try {
       const result = await createPacket(data);
       if (result.success && result.data) {
-        setPackets([...packets, result.data as Packet]);
+        // Convert the basic Packet to PacketWithMeals with empty meals
+        const newPacketWithMeals: PacketWithMeals = {
+          ...(result.data as any),
+          meals: []
+        };
+        setPackets([...packets, newPacketWithMeals]);
         setIsAddDialogOpen(false);
-        toast.success('Packet created successfully', {
-          description: `${data.name} has been added to your menu`
+        toast.success(t('messages.packetCreatedSuccessfully'), {
+          description: t('messages.packetCreatedDescription', { name: data.name })
         });
       }
     } catch (error) {
       console.error('Failed to create packet:', error);
-      toast.error('Failed to create packet', {
-        description: 'Please try again or check your input'
+      toast.error(t('messages.failedToCreatePacket'), {
+        description: t('messages.pleaseRetry')
       });
     } finally {
       setIsSubmitting(false);
@@ -138,18 +148,18 @@ export default function PacketsDataTable({ initialPackets }: PacketsDataTablePro
       if (result.success && result.data) {
         setPackets(
           packets.map((item) => 
-            item.id === data.id ? result.data as Packet : item
+            item.id === data.id ? { ...(result.data as any), meals: item.meals } : item
           )
         );
         setIsEditDialogOpen(false);
-        toast.success('Packet updated successfully', {
-          description: `${data.name} has been updated`
+        toast.success(t('messages.packetUpdatedSuccessfully'), {
+          description: t('messages.packetUpdatedDescription', { name: data.name })
         });
       }
     } catch (error) {
       console.error('Failed to update packet:', error);
-      toast.error('Failed to update packet', {
-        description: 'Please try again or check your input'
+      toast.error(t('messages.failedToUpdatePacket'), {
+        description: t('messages.pleaseRetry')
       });
     } finally {
       setIsSubmitting(false);
@@ -167,14 +177,14 @@ export default function PacketsDataTable({ initialPackets }: PacketsDataTablePro
           packets.filter((item) => item.id !== currentPacket.id)
         );
         setIsDeleteDialogOpen(false);
-        toast.success('Packet deleted successfully', {
-          description: `${currentPacket.name} has been removed from your menu`
+        toast.success(t('messages.packetDeletedSuccessfully'), {
+          description: t('messages.packetDeletedDescription', { name: currentPacket.name })
         });
       }
     } catch (error) {
       console.error('Failed to delete packet:', error);
-      toast.error('Failed to delete packet', {
-        description: 'Please try again'
+      toast.error(t('messages.failedToDeletePacket'), {
+        description: t('messages.pleaseRetry')
       });
     } finally {
       setIsSubmitting(false);
@@ -212,7 +222,7 @@ export default function PacketsDataTable({ initialPackets }: PacketsDataTablePro
                   <TableCell>{packet.name}</TableCell>
                   <TableCell>{packet.description || '-'}</TableCell>
                   <TableCell className="text-right">
-                    {formatPrice(calculatePacketPrice(packet))}
+                    {formatPrice(calculatePacketPrice(packet, packet.meals))}
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
@@ -295,7 +305,12 @@ export default function PacketsDataTable({ initialPackets }: PacketsDataTablePro
             onOpenChange={setIsDetailsDialogOpen}
             packetId={currentPacket.id}
             onPacketUpdated={(updatedPacket) => {
-              setPackets(packets.map(p => p.id === updatedPacket.id ? updatedPacket : p));
+              // Convert the basic Packet to PacketWithMeals by preserving existing meals
+              const updatedPacketWithMeals: PacketWithMeals = {
+                ...(updatedPacket as any),
+                meals: packets.find(p => p.id === updatedPacket.id)?.meals || []
+              };
+              setPackets(packets.map(p => p.id === updatedPacket.id ? updatedPacketWithMeals : p));
             }}
           />
 

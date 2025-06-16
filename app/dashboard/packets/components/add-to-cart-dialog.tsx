@@ -11,16 +11,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Packet } from '@/app/lib/pricing';
+import { PacketWithMeals } from '@/app/lib/pricing';
 import { ShoppingCart, Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { calculatePacketPrice } from '@/app/lib/price-utils';
+import { useTranslations } from '@/app/providers/language-provider';
 
 interface AddToCartDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  packet: Packet | null;
-  onAddToCart?: (packet: Packet, quantity: number, markupPercentage: number) => void;
+  packet: PacketWithMeals | null;
+  onAddToCart?: (packet: PacketWithMeals, quantity: number, markupPercentage: number) => void;
 }
 
 export function AddToCartDialog({ 
@@ -29,6 +30,7 @@ export function AddToCartDialog({
   packet,
   onAddToCart 
 }: AddToCartDialogProps) {
+  const t = useTranslations();
   const [quantity, setQuantity] = useState(1);
   const [markupPercentage, setMarkupPercentage] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -44,7 +46,8 @@ export function AddToCartDialog({
   if (!packet) return null;
 
   // Calculate base price (from meals or override)
-  const basePrice = calculatePacketPrice(packet, (packet as any).meals);
+  const basePrice = calculatePacketPrice(packet, packet.meals);
+  const hasValidPrice = packet.price_net_override !== null || basePrice > 0;
   
   // Calculate prices with markup
   const markupDecimal = typeof markupPercentage === 'number' ? markupPercentage / 100 : 0;
@@ -72,7 +75,7 @@ export function AddToCartDialog({
 
   const handleAddToCart = async () => {
     if (markupPercentage === '') {
-      toast.error('Markup percentage is required');
+      toast.error(t('ui.markupPercentageRequired'));
       return;
     }
 
@@ -82,15 +85,15 @@ export function AddToCartDialog({
         await onAddToCart(packet, quantity, typeof markupPercentage === 'number' ? markupPercentage : 0);
       }
       
-      toast.success('Added to cart', {
-        description: `${quantity}x ${packet.name} added to your cart`
+      toast.success(t('cart.addedToCart'), {
+        description: t('cart.itemAddedDescription', { quantity, name: packet.name })
       });
       
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to add to cart:', error);
-      toast.error('Failed to add to cart', {
-        description: 'Please try again'
+      toast.error(t('ui.failedToAddToCart'), {
+        description: t('ui.pleaseRetry')
       });
     } finally {
       setIsSubmitting(false);
@@ -103,7 +106,7 @@ export function AddToCartDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
-            Add to Cart
+            {t('cart.addToCart')}
           </DialogTitle>
         </DialogHeader>
         
@@ -118,7 +121,7 @@ export function AddToCartDialog({
 
           {/* Quantity Input */}
           <div className="space-y-2">
-            <Label htmlFor="quantity">Quantity</Label>
+            <Label htmlFor="quantity">{t('ui.quantity')}</Label>
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
@@ -150,13 +153,13 @@ export function AddToCartDialog({
 
           {/* Markup Percentage */}
           <div className="space-y-2">
-            <Label htmlFor="markup">Markup Percentage (%)</Label>
+            <Label htmlFor="markup">{t('ui.markupPercentage')}</Label>
             <Input
               id="markup"
               type="number"
               value={markupPercentage}
               onChange={(e) => handleMarkupChange(e.target.value)}
-              placeholder="Enter markup percentage"
+              placeholder={t('ui.markupPercentagePlaceholder')}
               min="0"
               max="1000"
               step="0.1"
@@ -164,30 +167,37 @@ export function AddToCartDialog({
               required
             />
             <p className="text-xs text-muted-foreground">
-              Required field. Enter 0 for no markup.
+              {t('ui.markupPercentageHelp')}
             </p>
           </div>
 
           {/* Price Preview */}
           <div className="bg-muted/50 p-4 rounded-lg space-y-2">
-            <h4 className="font-medium">Price Calculation</h4>
+            <h4 className="font-medium">{t('ui.priceCalculation')}</h4>
+            {!hasValidPrice && (
+              <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md">
+                <p className="text-sm text-yellow-800">
+                  ⚠️ {t('ui.noPacketPriceWarning')}
+                </p>
+              </div>
+            )}
             <div className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span>Base price per packet:</span>
-                <span>€{basePrice.toFixed(2)}</span>
+                <span>{t('ui.basePricePerUnit')}:</span>
+                <span>{hasValidPrice ? `€${basePrice.toFixed(2)}` : 'N/A'}</span>
               </div>
-              {typeof markupPercentage === 'number' && (
+              {typeof markupPercentage === 'number' && hasValidPrice && (
                 <>
                   <div className="flex justify-between">
-                    <span>With markup ({markupPercentage}%):</span>
+                    <span>{t('ui.withMarkup', { markup: markupPercentage })}:</span>
                     <span>€{netPricePerUnit.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Net total ({quantity}x):</span>
+                    <span>{t('ui.netTotal', { quantity })}:</span>
                     <span className="font-medium">€{totalNetPrice.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between border-t pt-1">
-                    <span>Gross total (incl. VAT):</span>
+                    <span>{t('ui.grossTotal')}:</span>
                     <span className="font-semibold">€{totalGrossPrice.toFixed(2)}</span>
                   </div>
                 </>
@@ -202,14 +212,14 @@ export function AddToCartDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            Cancel
+            {t('ui.cancel')}
           </Button>
           <Button
             onClick={handleAddToCart}
-            disabled={isSubmitting || markupPercentage === ''}
+            disabled={isSubmitting || markupPercentage === '' || !hasValidPrice}
             className="min-w-[100px]"
           >
-            {isSubmitting ? 'Adding...' : 'Add to Cart'}
+            {isSubmitting ? t('cart.adding') : t('cart.addToCart')}
           </Button>
         </DialogFooter>
       </DialogContent>

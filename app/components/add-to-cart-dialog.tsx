@@ -15,14 +15,15 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ShoppingCart, Minus, Plus, Package, Utensils, Wrench } from 'lucide-react';
-import { calculateMealPrice } from '@/app/lib/price-utils';
+import { calculateMealPrice, calculatePacketPrice } from '@/app/lib/price-utils';
+import { MealWithIngredients, Service, PacketWithMeals } from '@/app/lib/pricing';
 import { toast } from 'sonner';
 import { useTranslations } from '@/app/providers/language-provider';
 
 interface AddToCartDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  item: { id: string; name: string; description?: string | null; price_net_override?: number | null; price_net?: number } | null;
+  item: MealWithIngredients | PacketWithMeals | Service | null;
   itemType: 'meal' | 'packet' | 'service' | null;
   onAddToCart: (itemId: string, itemType: 'meal' | 'packet' | 'service', quantity: number, markupPct: number) => Promise<void>;
 }
@@ -43,18 +44,27 @@ export function AddToCartDialog({
   useEffect(() => {
     if (open && item) {
       setQuantity(1);
-      setMarkupPct('');
+      setMarkupPct(itemType === 'service' ? 0 : '');
     }
-  }, [open, item]);
+  }, [open, item, itemType]);
 
   if (!item || !itemType) return null;
 
-  // Calculate base price (simplified for now)
-  const basePrice = itemType === 'meal' 
-    ? calculateMealPrice(item as any) // Type assertion since we know it's a meal
-    : itemType === 'service'
-    ? (item.price_net || 0) // For services, use direct price
-    : (item.price_net_override || 0); // For packets, use override or 0
+  // Calculate base price with proper type handling
+  const basePrice = (() => {
+    if (itemType === 'meal') {
+      const meal = item as MealWithIngredients;
+      return calculateMealPrice(meal, meal.ingredients);
+    } else if (itemType === 'service') {
+      const service = item as Service;
+      return service.price_net;
+    } else if (itemType === 'packet') {
+      const packet = item as PacketWithMeals;
+      return calculatePacketPrice(packet, packet.meals);
+    }
+    return 0;
+  })();
+  
   const hasValidPrice = basePrice > 0;
   
   // Calculate prices with markup
@@ -80,14 +90,15 @@ export function AddToCartDialog({
   };
 
   const handleAddToCart = async () => {
-    if (markupPct === '') {
+    if (itemType !== 'service' && markupPct === '') {
       toast.error(t('cart.markupRequired'));
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await onAddToCart(item.id, itemType, quantity, typeof markupPct === 'number' ? markupPct : 0);
+      const finalMarkup = itemType === 'service' ? 0 : (typeof markupPct === 'number' ? markupPct : 0);
+      await onAddToCart(item.id, itemType, quantity, finalMarkup);
       
       toast.success(t('ui.addedToCartSuccess'), {
         description: t('ui.addedToCartDescription', { quantity, name: item.name })
@@ -156,7 +167,7 @@ export function AddToCartDialog({
                 onChange={(e) => handleQuantityChange(parseInt(e.target.value) || 1)}
                 min="1"
                 max="999"
-                className="w-20 text-center"
+                className="w-20 text-center [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <Button
                 variant="outline"
@@ -169,33 +180,41 @@ export function AddToCartDialog({
             </div>
           </div>
 
-          {/* Markup Percentage */}
-          <div className="space-y-2">
-            <Label htmlFor="markup">{t('cart.markupPercentage')} *</Label>
-            <Input
-              id="markup"
-              type="number"
-              value={markupPct}
-              onChange={(e) => handleMarkupChange(e.target.value)}
-              placeholder={t('ui.enterMarkupPercentage')}
-              min="0"
-              max="1000"
-              step="0.1"
-              required
-            />
-            <p className="text-xs text-muted-foreground">
-              {t('ui.requiredFieldEnterZero')}
-            </p>
-          </div>
+          {/* Markup Percentage - Hide for services */}
+          {itemType !== 'service' && (
+            <div className="space-y-2">
+              <Label htmlFor="markup">{t('cart.markupPercentage')} *</Label>
+              <Input
+                id="markup"
+                type="number"
+                value={markupPct}
+                onChange={(e) => handleMarkupChange(e.target.value)}
+                placeholder={t('ui.enterMarkupPercentage')}
+                min="0"
+                max="1000"
+                step="0.1"
+                className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                {t('ui.requiredFieldEnterZero')}
+              </p>
+            </div>
+          )}
 
           {/* Price Preview */}
           <Card className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20">
             <CardContent className="p-4">
               <h4 className="font-medium mb-3">{t('cart.priceCalculation')}</h4>
-              {!hasValidPrice && itemType === 'meal' && (
+              {!hasValidPrice && (
                 <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md mb-3">
                   <p className="text-sm text-yellow-800">
-                    {t('ui.noValidPriceWarning')}
+                    {itemType === 'meal' 
+                      ? t('ui.noPriceWarning')
+                      : itemType === 'packet'
+                      ? t('ui.noPacketPriceWarning')
+                      : t('ui.noServicePriceWarning')
+                    }
                   </p>
                 </div>
               )}
@@ -204,15 +223,17 @@ export function AddToCartDialog({
                   <span>{t('ui.basePricePerUnitColon')}</span>
                   <span>{hasValidPrice ? `€${basePrice.toFixed(2)}` : t('ui.notAvailable')}</span>
                 </div>
-                {typeof markupPct === 'number' && hasValidPrice && (
+                {((typeof markupPct === 'number' && itemType !== 'service') || itemType === 'service') && hasValidPrice && (
                   <>
-                    <div className="flex justify-between">
-                      <span>{t('ui.withMarkupPercent', { markup: markupPct })}:</span>
-                      <span>€{pricePerUnit.toFixed(2)}</span>
-                    </div>
+                    {itemType !== 'service' && (
+                      <div className="flex justify-between">
+                        <span>{t('ui.withMarkupPercent', { markup: markupPct })}</span>
+                        <span>€{pricePerUnit.toFixed(2)}</span>
+                      </div>
+                    )}
                     <Separator />
                     <div className="flex justify-between font-semibold">
-                      <span>{t('ui.totalQuantity', { quantity })}:</span>
+                      <span>{t('ui.totalQuantity', { quantity })}</span>
                       <span className="text-green-600">€{totalPrice.toFixed(2)}</span>
                     </div>
                   </>
@@ -228,11 +249,11 @@ export function AddToCartDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            {t('common.cancel')}
+            {t('ui.cancel')}
           </Button>
           <Button
             onClick={handleAddToCart}
-            disabled={isSubmitting || markupPct === '' || !hasValidPrice}
+            disabled={isSubmitting || (itemType !== 'service' && markupPct === '') || !hasValidPrice}
             className="min-w-[100px]"
           >
             {isSubmitting ? t('cart.adding') : t('cart.addToCart')}

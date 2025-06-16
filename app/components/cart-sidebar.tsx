@@ -415,7 +415,7 @@ export default function CartSidebar() {
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  className="h-7 flex-1 text-xs text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50"
+                                  className="h-7 flex-1 text-xs text-red-500 hover:!text-white border-red-200 hover:!border-red-500 hover:!bg-red-500 transition-all duration-200"
                                   onClick={async () => {
                                                         toast.loading(t('ui.removingItem'), { id: 'cart-remove' });
                     try {

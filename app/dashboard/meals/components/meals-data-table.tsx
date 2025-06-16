@@ -19,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Pencil, Trash2, Eye, Copy, ShoppingCart } from 'lucide-react';
 import { CrudToolbar } from '@/app/components/CrudToolbar';
-import { Meal } from '@/app/lib/pricing';
+import { MealWithIngredients } from '@/app/lib/pricing';
 import { MealFormValues } from '@/app/lib/validation-schemas';
 import { createMeal, deleteMeal, updateMeal } from '@/app/actions/meals';
 import { MealFormDialog } from './meal-form-dialog';
@@ -33,19 +33,19 @@ import { toast } from 'sonner';
 import { useTranslations } from '@/app/providers/language-provider';
 
 interface MealsDataTableProps {
-  initialMeals: Meal[];
+  initialMeals: MealWithIngredients[];
 }
 
 export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
   const t = useTranslations();
   const router = useRouter();
-  const [meals, setMeals] = useState<Meal[]>(initialMeals);
+  const [meals, setMeals] = useState<MealWithIngredients[]>(initialMeals);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isCartDialogOpen, setIsCartDialogOpen] = useState(false);
-  const [currentMeal, setCurrentMeal] = useState<Meal | null>(null);
+  const [currentMeal, setCurrentMeal] = useState<MealWithIngredients | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddNew = () => {
@@ -56,33 +56,33 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
     router.refresh();
   };
 
-  const handleEdit = (meal: Meal) => {
+  const handleEdit = (meal: MealWithIngredients) => {
     setCurrentMeal(meal);
     setIsEditDialogOpen(true);
   };
 
-  const handleDelete = (meal: Meal) => {
+  const handleDelete = (meal: MealWithIngredients) => {
     setCurrentMeal(meal);
     setIsDeleteDialogOpen(true);
   };
 
-  const handleViewDetails = (meal: Meal) => {
+  const handleViewDetails = (meal: MealWithIngredients) => {
     setCurrentMeal(meal);
     setIsDetailsDialogOpen(true);
   };
 
-  const handleAddToCart = (meal: Meal) => {
+  const handleAddToCart = (meal: MealWithIngredients) => {
     setCurrentMeal(meal);
     setIsCartDialogOpen(true);
   };
 
-  const handleCartSubmit = async (meal: Meal, quantity: number, markupPercentage: number) => {
+  const handleCartSubmit = async (meal: MealWithIngredients, quantity: number, markupPercentage: number) => {
     // TODO: Implement actual cart functionality
     console.log('Adding to cart:', { meal: meal.name, quantity, markupPercentage });
     // This should integrate with your cart context/state management
   };
 
-  const handleDuplicate = async (meal: Meal) => {
+  const handleDuplicate = async (meal: MealWithIngredients) => {
     const duplicateData: MealFormValues = {
       name: `${meal.name} (Copy)`,
       description: meal.description,
@@ -93,15 +93,16 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
     try {
       const result = await createMeal(duplicateData);
       if (result.success && result.data) {
-        setMeals([...meals, result.data as Meal]);
-        toast.success('Meal duplicated successfully', {
-          description: `${duplicateData.name} has been created`
+        // Note: The duplicated meal won't have ingredients, we'd need to refetch or handle this separately
+        setMeals([...meals, { ...result.data, ingredients: [] } as MealWithIngredients]);
+        toast.success(t('messages.mealDuplicatedSuccessfully'), {
+          description: t('messages.mealCreatedDescription', { name: duplicateData.name })
         });
       }
     } catch (error) {
       console.error('Failed to duplicate meal:', error);
-      toast.error('Failed to duplicate meal', {
-        description: 'Please try again'
+      toast.error(t('messages.failedToDuplicateMeal'), {
+        description: t('messages.pleaseRetry')
       });
     } finally {
       setIsSubmitting(false);
@@ -113,16 +114,16 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
     try {
       const result = await createMeal(data);
       if (result.success && result.data) {
-        setMeals([...meals, result.data as Meal]);
+        setMeals([...meals, { ...result.data, ingredients: [] } as MealWithIngredients]);
         setIsAddDialogOpen(false);
-        toast.success('Meal created successfully', {
-          description: `${data.name} has been added to your menu`
+        toast.success(t('messages.mealCreatedSuccessfully'), {
+          description: t('messages.mealAddedDescription', { name: data.name })
         });
       }
     } catch (error) {
       console.error('Failed to create meal:', error);
-      toast.error('Failed to create meal', {
-        description: 'Please try again or check your input'
+      toast.error(t('messages.failedToCreateMeal'), {
+        description: t('messages.pleaseRetryOrCheckInput')
       });
     } finally {
       setIsSubmitting(false);
@@ -138,18 +139,18 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
       if (result.success && result.data) {
         setMeals(
           meals.map((item) => 
-            item.id === data.id ? result.data as Meal : item
+            item.id === data.id ? { ...item, ...result.data } : item
           )
         );
         setIsEditDialogOpen(false);
-        toast.success('Meal updated successfully', {
-          description: `${data.name} has been updated`
+        toast.success(t('messages.mealUpdatedSuccessfully'), {
+          description: t('messages.mealUpdatedDescription', { name: data.name })
         });
       }
     } catch (error) {
       console.error('Failed to update meal:', error);
-      toast.error('Failed to update meal', {
-        description: 'Please try again or check your input'
+      toast.error(t('messages.failedToUpdateMeal'), {
+        description: t('messages.pleaseRetryOrCheckInput')
       });
     } finally {
       setIsSubmitting(false);
@@ -167,14 +168,14 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
           meals.filter((item) => item.id !== currentMeal.id)
         );
         setIsDeleteDialogOpen(false);
-        toast.success('Meal deleted successfully', {
-          description: `${currentMeal.name} has been removed from your menu`
+        toast.success(t('messages.mealDeletedSuccessfully'), {
+          description: t('messages.mealRemovedDescription', { name: currentMeal.name })
         });
       }
     } catch (error) {
       console.error('Failed to delete meal:', error);
-      toast.error('Failed to delete meal', {
-        description: 'Please try again'
+      toast.error(t('messages.failedToDeleteMeal'), {
+        description: t('messages.pleaseRetry')
       });
     } finally {
       setIsSubmitting(false);
@@ -212,7 +213,7 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
                   <TableCell>{meal.name}</TableCell>
                   <TableCell>{meal.description || '-'}</TableCell>
                   <TableCell className="text-right">
-                    {formatPrice(calculateMealPrice(meal))}
+                    {formatPrice(calculateMealPrice(meal, meal.ingredients))}
                   </TableCell>
                   <TableCell>
                     <div className="flex justify-end gap-1">
@@ -295,7 +296,7 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
             onOpenChange={setIsDetailsDialogOpen}
             mealId={currentMeal.id}
             onMealUpdated={(updatedMeal) => {
-              setMeals(meals.map(m => m.id === updatedMeal.id ? updatedMeal : m));
+              setMeals(meals.map(m => m.id === updatedMeal.id ? { ...m, ...updatedMeal } : m));
             }}
           />
 

@@ -130,9 +130,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             if (packetDetails?.price_net_override !== null && packetDetails?.price_net_override !== undefined) {
               netPrice = packetDetails.price_net_override;
             } else if (packetDetails?.packet_meals) {
-              // For packets, would need to implement packet price calculation
-              // For now, fallback to 0 if no override
-              netPrice = 0;
+              // Transform packet_meals to the format expected by calcPacketNet
+              const mealsWithDetails = packetDetails.packet_meals.map((pm: any) => ({
+                ...pm.meals,
+                quantity: pm.quantity,
+                ingredients: pm.meals?.meal_ingredients?.map((mi: any) => ({
+                  ...mi.ingredients,
+                  quantity: mi.quantity
+                })) || []
+              }));
+              netPrice = calcPacketNet(packetDetails, mealsWithDetails);
             }
           } else if (item.item_type === 'service') {
             // For services, use the price_net directly
