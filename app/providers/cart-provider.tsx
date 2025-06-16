@@ -38,7 +38,7 @@ interface CartContextState {
   cartItems: DetailedCartItem[];
   isLoading: boolean;
   cartSummary: CartSummary;
-  addItem: (itemType: 'meal' | 'packet' | 'service', itemId: string, quantity: number, markupPct: number) => Promise<void>;
+  addItem: (itemType: 'meal' | 'packet', itemId: string, quantity: number, markupPct: number) => Promise<void>;
   updateItemQuantity: (itemId: string, quantity: number) => Promise<void>;
   updateItemMarkup: (itemId: string, markupPct: number) => Promise<void>;
   removeItem: (itemId: string) => Promise<void>;
@@ -181,7 +181,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [loadCart]);
 
   // Add item to cart with quantity (optimized)
-  const addItem = async (itemType: 'meal' | 'packet' | 'service', itemId: string, quantity: number, markupPct: number) => {
+  const addItem = async (itemType: 'meal' | 'packet', itemId: string, quantity: number, markupPct: number) => {
     if (!cart) return;
     
     try {

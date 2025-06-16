@@ -125,7 +125,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
 
   // Add to cart state
   const [isAddToCartDialogOpen, setIsAddToCartDialogOpen] = useState(false);
-  const [cartItemToAdd, setCartItemToAdd] = useState<{ item: MealWithIngredients | PacketWithMeals | Service; type: 'meal' | 'packet' | 'service' } | null>(null);
+  const [cartItemToAdd, setCartItemToAdd] = useState<{ item: MealWithIngredients | PacketWithMeals; type: 'meal' | 'packet' } | null>(null);
 
   // Safety check to prevent undefined errors
   const safeCartItems = cartItems || [];
@@ -163,12 +163,12 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
     cartItems: safeCartItems.reduce((sum, item) => sum + item.quantity, 0)
   };
 
-  const handleAddToCart = (item: MealWithIngredients | PacketWithMeals | Service, type: 'meal' | 'packet' | 'service') => {
+  const handleAddToCart = (item: MealWithIngredients | PacketWithMeals, type: 'meal' | 'packet') => {
     setCartItemToAdd({ item, type });
     setIsAddToCartDialogOpen(true);
   };
 
-  const handleAddToCartConfirm = async (itemId: string, itemType: 'meal' | 'packet' | 'service', quantity: number, markupPct: number) => {
+  const handleAddToCartConfirm = async (itemId: string, itemType: 'meal' | 'packet', quantity: number, markupPct: number) => {
     try {
       await addItem(itemType, itemId, quantity, markupPct);
       setIsAddToCartDialogOpen(false);
@@ -1063,21 +1063,6 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                                    )}
                                  </div>
                                  <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
-                                   <Tooltip>
-                                     <TooltipTrigger asChild>
-                                       <Button 
-                                         variant="ghost" 
-                                         size="sm" 
-                                         className="h-9 w-9 p-0 hover:bg-orange-100 hover:text-orange-700"
-                                         onClick={() => handleAddToCart(service, 'service')}
-                                       >
-                                         <ShoppingCart className="h-5 w-5" />
-                                       </Button>
-                                     </TooltipTrigger>
-                                     <TooltipContent>
-                                       <p>Add to cart</p>
-                                     </TooltipContent>
-                                   </Tooltip>
                                    <Tooltip>
                                      <TooltipTrigger asChild>
                                        <Button 

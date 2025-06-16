@@ -67,7 +67,13 @@ export function IngredientFormDialog({
 }: IngredientFormDialogProps) {
   const form = useForm<IngredientFormValues>({
     resolver: zodResolver(ingredientSchema),
-    defaultValues: defaultValues ?? {
+    defaultValues: defaultValues ? {
+      id: defaultValues.id,
+      name: defaultValues.name,
+      unit: defaultValues.unit,
+      price_net: defaultValues.price_net,
+      category: defaultValues.category || undefined,
+    } : {
       name: '',
       unit: '',
       price_net: 0,
