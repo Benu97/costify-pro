@@ -26,8 +26,10 @@ import {
   Minus,
   Plus
 } from 'lucide-react';
+import { useTranslations } from '@/app/providers/language-provider';
 
 export default function CartSidebar() {
+  const t = useTranslations();
   const { cart, cartItems, isLoading, cartSummary, updateItemQuantity, updateItemMarkup, removeItem } = useCart();
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editMarkup, setEditMarkup] = useState<number>(0);
@@ -74,7 +76,7 @@ export default function CartSidebar() {
       
       try {
         // Show immediate feedback
-        toast.loading('Updating cart item...', { id: 'cart-update' });
+        toast.loading(t('cart.updating'), { id: 'cart-update' });
         
         // Update both values concurrently for better performance
         await Promise.all([
@@ -83,9 +85,9 @@ export default function CartSidebar() {
         ]);
         
         setEditingItemId(null);
-        toast.success('Item updated successfully', { id: 'cart-update' });
+        toast.success(t('cart.updatedCart'), { id: 'cart-update' });
       } catch (error) {
-        toast.error('Failed to update item', { id: 'cart-update' });
+        toast.error(t('cart.failedToUpdate'), { id: 'cart-update' });
       }
     }
   };
@@ -170,7 +172,7 @@ export default function CartSidebar() {
               >
                 <h2 className="text-xl font-semibold flex items-center space-x-2">
                   <ShoppingCart className="h-6 w-6" />
-                  <span>Shopping Cart</span>
+                  <span>{t('ui.shoppingCart')}</span>
                 </h2>
               </motion.div>
             )}
@@ -187,7 +189,7 @@ export default function CartSidebar() {
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="left">
-                <p>{isCollapsed ? 'Expand' : 'Collapse'} cart</p>
+                <p>{isCollapsed ? t('ui.expandCart') : t('ui.collapseCart')} cart</p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -205,7 +207,7 @@ export default function CartSidebar() {
                 </div>
               </TooltipTrigger>
               <TooltipContent side="left">
-                <p>{cartItems.reduce((sum, item) => sum + item.quantity, 0)} items in cart</p>
+                <p>{cartItems.reduce((sum, item) => sum + item.quantity, 0)} {t('ui.itemsInCart')}</p>
               </TooltipContent>
             </Tooltip>
           </div>
@@ -234,8 +236,8 @@ export default function CartSidebar() {
                     <ShoppingCart className="h-8 w-8 text-muted-foreground" />
                   </div>
                   <div>
-                    <h3 className="font-medium text-muted-foreground text-base">Cart is empty</h3>
-                    <p className="text-sm text-muted-foreground">Add meals or packets to get started</p>
+                    <h3 className="font-medium text-muted-foreground text-base">{t('ui.cartIsEmpty')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('ui.addMealsOrPacketsToGetStarted')}</p>
                   </div>
                 </motion.div>
               ) : (
@@ -272,7 +274,7 @@ export default function CartSidebar() {
                               <div className="space-y-3">
                                 {/* Markup % with +/- buttons */}
                                 <div>
-                                  <Label htmlFor="markup" className="text-xs mb-1 block">Markup %</Label>
+                                  <Label htmlFor="markup" className="text-xs mb-1 block">{t('ui.markupPercent')} %</Label>
                                   <div className="flex items-center gap-1">
                                     <Button
                                       variant="outline"
@@ -306,7 +308,7 @@ export default function CartSidebar() {
                                 
                                 {/* Quantity with +/- buttons */}
                                 <div>
-                                  <Label htmlFor="quantity" className="text-xs mb-1 block">Quantity</Label>
+                                  <Label htmlFor="quantity" className="text-xs mb-1 block">{t('cart.quantity')}</Label>
                                   <div className="flex items-center gap-1">
                                     <Button
                                       variant="outline"
@@ -342,7 +344,7 @@ export default function CartSidebar() {
                                   className="h-7 text-xs px-3 flex-1 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800"
                                   onClick={handleSaveEdit}
                                 >
-                                  Save
+                                  {t('ui.save')}
                                 </Button>
                                 <Button
                                   variant="outline"
@@ -350,7 +352,7 @@ export default function CartSidebar() {
                                   className="h-7 text-xs px-3 flex-1 hover:bg-orange-50 hover:border-orange-300"
                                   onClick={handleCancelEdit}
                                 >
-                                  Cancel
+                                  {t('ui.cancel')}
                                 </Button>
                               </div>
                             </div>
@@ -376,23 +378,23 @@ export default function CartSidebar() {
                               </div>
                               
                               {/* Price info in compact grid */}
-                              <div className="grid grid-cols-4 gap-2 text-xs mb-2">
+                                                              <div className="grid grid-cols-4 gap-2 text-xs mb-2">
                                 <div className="text-center">
-                                  <div className="text-muted-foreground">Qty</div>
+                                  <div className="text-muted-foreground">{t('ui.qty')}</div>
                                   <Badge variant="secondary" className="text-xs h-5 px-1.5 font-semibold">
                                     {item.quantity}x
                                   </Badge>
                                 </div>
                                 <div className="text-center">
-                                  <div className="text-muted-foreground">Unit</div>
+                                  <div className="text-muted-foreground">{t('ui.unit')}</div>
                                   <div className="font-medium">€{item.netPrice.toFixed(2)}</div>
                                 </div>
                                 <div className="text-center">
-                                  <div className="text-muted-foreground">Markup</div>
+                                  <div className="text-muted-foreground">{t('ui.markupPercent')}</div>
                                   <div className="font-medium">{item.markup_pct}%</div>
                                 </div>
                                 <div className="text-center">
-                                  <div className="text-muted-foreground">Total</div>
+                                  <div className="text-muted-foreground">{t('cart.total')}</div>
                                   <div className="font-semibold text-green-600">
                                     €{(item.grossPrice * item.quantity).toFixed(2)}
                                   </div>
@@ -407,25 +409,25 @@ export default function CartSidebar() {
                                   className="h-7 flex-1 text-xs hover:bg-orange-50 hover:border-orange-300"
                                   onClick={() => handleEdit(item.id, item.markup_pct, item.quantity)}
                                 >
-                                  <Edit className="h-3 w-3 mr-1" />
-                                  Edit
+                                                    <Edit className="h-3 w-3 mr-1" />
+                  {t('ui.edit')}
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   className="h-7 flex-1 text-xs text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50"
                                   onClick={async () => {
-                                    toast.loading('Removing item...', { id: 'cart-remove' });
-                                    try {
-                                      await removeItem(item.id);
-                                      toast.success('Item removed from cart', { id: 'cart-remove' });
-                                    } catch (error) {
-                                      toast.error('Failed to remove item', { id: 'cart-remove' });
+                                                        toast.loading(t('ui.removingItem'), { id: 'cart-remove' });
+                    try {
+                      await removeItem(item.id);
+                      toast.success(t('ui.itemRemovedFromCart'), { id: 'cart-remove' });
+                    } catch (error) {
+                      toast.error(t('ui.failedToRemoveItem'), { id: 'cart-remove' });
                                     }
                                   }}
                                 >
-                                  <Trash2 className="h-3 w-3 mr-1" />
-                                  Remove
+                                                    <Trash2 className="h-3 w-3 mr-1" />
+                  {t('ui.remove')}
                                 </Button>
                               </div>
                             </div>
@@ -446,6 +448,7 @@ export default function CartSidebar() {
 
 // Fixed Cart Summary Component - to be placed at bottom right of page
 export function CartSummaryFixed() {
+  const t = useTranslations();
   const { cartItems, cartSummary, isLoading } = useCart();
 
   const handleExportPDF = () => {
@@ -497,18 +500,18 @@ export function CartSummaryFixed() {
       <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-green-50/95 to-blue-50/95 dark:from-green-950/90 dark:to-blue-950/90 border border-green-200/80 dark:border-green-800/80 p-4 backdrop-blur-md shadow-xl mb-3">
         <div className="space-y-3">
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Net Total:</span>
+            <span className="text-muted-foreground">{t('ui.netTotalColon')}</span>
             <span className="font-medium">€{cartSummary.nettoTotal.toFixed(2)}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">Avg. Markup:</span>
+            <span className="text-muted-foreground">{t('ui.avgMarkupColon')}</span>
             <Badge variant="outline" className="h-5 text-sm px-2 font-medium">
               {cartSummary.avgMarkupPct.toFixed(1)}%
             </Badge>
           </div>
           <Separator className="my-2" />
           <div className="flex justify-between items-center">
-            <span className="font-semibold text-base">Gross Total:</span>
+            <span className="font-semibold text-base">{t('ui.grossTotalColon')}</span>
             <span className="text-xl font-bold bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
               €{cartSummary.bruttoTotal.toFixed(2)}
             </span>
@@ -527,7 +530,7 @@ export function CartSummaryFixed() {
         disabled={isLoading}
       >
         <Download className="h-5 w-5 mr-2" />
-        Export PDF Quote
+        {t('ui.exportPDFQuote')}
       </Button>
     </motion.div>
   );

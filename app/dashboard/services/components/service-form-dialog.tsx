@@ -25,6 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ServiceFormValues, serviceSchema } from '@/app/lib/validation-schemas';
 import { Service } from '@/app/lib/pricing';
+import { useTranslations } from '@/app/providers/language-provider';
 import { Plus, Loader2, DollarSign, Wrench } from 'lucide-react';
 
 interface ServiceFormDialogProps {
@@ -46,6 +47,7 @@ export function ServiceFormDialog({
   title,
   onDelete
 }: ServiceFormDialogProps) {
+  const t = useTranslations();
   const isEditing = !!defaultValues;
   const form = useForm<ServiceFormValues>({
     resolver: zodResolver(serviceSchema),
@@ -76,7 +78,7 @@ export function ServiceFormDialog({
             {title}
           </DialogTitle>
           <DialogDescription>
-            {isEditing ? 'Update service details and pricing' : 'Add a new service with name and price'}
+            {isEditing ? t('ui.updateServiceDetails') : t('ui.addNewServiceWithPrice')}
           </DialogDescription>
         </DialogHeader>
 
@@ -87,7 +89,7 @@ export function ServiceFormDialog({
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
                   <Wrench className="h-3 w-3 mr-1" />
-                  Service Details
+                  {t('ui.serviceDetails')}
                 </Badge>
               </div>
               
@@ -96,7 +98,7 @@ export function ServiceFormDialog({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Service Name *</FormLabel>
+                    <FormLabel>{t('services.serviceName')} *</FormLabel>
                     <FormControl>
                       <Input 
                         {...field} 
@@ -115,11 +117,11 @@ export function ServiceFormDialog({
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormLabel>{t('ui.description')} (Optional)</FormLabel>
                     <FormControl>
                       <Textarea 
                         {...field} 
-                        placeholder="Brief description of the service..."
+                        placeholder={t('ui.briefDescription')}
                         className="focus:border-orange-500 focus:ring-orange-500 resize-none"
                         rows={3}
                       />
@@ -137,7 +139,7 @@ export function ServiceFormDialog({
               <div className="flex items-center gap-2">
                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
                   <DollarSign className="h-3 w-3 mr-1" />
-                  Pricing
+                  {t('ui.pricing')}
                 </Badge>
               </div>
 
@@ -146,7 +148,7 @@ export function ServiceFormDialog({
                 name="price_net"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Price (€) *</FormLabel>
+                    <FormLabel>{t('ui.price')} *</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -202,11 +204,11 @@ export function ServiceFormDialog({
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {isEditing ? 'Updating...' : 'Creating...'}
+                      {isEditing ? t('ui.updating') : t('ui.creating')}
                     </>
                   ) : (
                     <>
-                      {isEditing ? 'Update Service' : 'Create Service'}
+                      {isEditing ? t('services.editService') : t('services.addService')}
                     </>
                   )}
                 </Button>

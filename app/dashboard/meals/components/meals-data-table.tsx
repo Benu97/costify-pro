@@ -30,12 +30,14 @@ import { FavoriteButton } from '@/app/components/favorite-button';
 import { calculateMealPrice, formatPrice } from '@/app/lib/price-utils';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { useTranslations } from '@/app/providers/language-provider';
 
 interface MealsDataTableProps {
   initialMeals: Meal[];
 }
 
 export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
+  const t = useTranslations();
   const router = useRouter();
   const [meals, setMeals] = useState<Meal[]>(initialMeals);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -240,7 +242,7 @@ export default function MealsDataTable({ initialMeals }: MealsDataTableProps) {
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem onClick={() => handleViewDetails(meal)}>
                             <Eye className="h-4 w-4 mr-2" />
-                            View details
+                            {t('ui.viewDetails')}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleEdit(meal)}>
                             <Pencil className="h-4 w-4 mr-2" />

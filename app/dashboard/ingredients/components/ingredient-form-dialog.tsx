@@ -31,21 +31,12 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { IngredientFormValues, ingredientSchema } from '@/app/lib/validation-schemas';
 import { Ingredient } from '@/app/lib/pricing';
+import { useTranslations } from '@/app/providers/language-provider';
 import { Plus, Loader2, DollarSign, Package2 } from 'lucide-react';
 
-// Common unit types for ingredients
-const UNIT_OPTIONS = [
-  { value: 'kg', label: 'kg (kilogram)' },
-  { value: 'g', label: 'g (gram)' },
-  { value: 'l', label: 'l (liter)' },
-  { value: 'ml', label: 'ml (milliliter)' },
-  { value: 'pieces', label: 'pieces' },
-  { value: 'tbsp', label: 'tbsp (tablespoon)' },
-  { value: 'tsp', label: 'tsp (teaspoon)' },
-  { value: 'cup', label: 'cup' },
-  { value: 'package', label: 'package' },
-  { value: 'can', label: 'can' },
-  { value: 'bottle', label: 'bottle' },
+// Common unit types for ingredients - will be dynamically translated
+const UNIT_KEYS = [
+  'kg', 'g', 'l', 'ml', 'pieces', 'tbsp', 'tsp', 'cup', 'package', 'can', 'bottle'
 ];
 
 interface IngredientFormDialogProps {
@@ -65,6 +56,14 @@ export function IngredientFormDialog({
   isSubmitting,
   title
 }: IngredientFormDialogProps) {
+  const t = useTranslations();
+  
+  // Create unit options with translations
+  const UNIT_OPTIONS = UNIT_KEYS.map(key => ({
+    value: key,
+    label: t(`units.${key}`)
+  }));
+  
   const form = useForm<IngredientFormValues>({
     resolver: zodResolver(ingredientSchema),
     defaultValues: defaultValues ? {
@@ -106,8 +105,8 @@ export function IngredientFormDialog({
           </DialogTitle>
           <DialogDescription>
             {defaultValues 
-              ? "Update ingredient details and pricing information"
-              : "Add a new ingredient to your inventory"
+              ? t('ui.updateIngredientDetails')
+              : t('ui.addNewIngredientToInventory')
             }
           </DialogDescription>
         </DialogHeader>
@@ -119,7 +118,7 @@ export function IngredientFormDialog({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name *</FormLabel>
+                    <FormLabel>{t('ui.name')} *</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="e.g., Organic Flour, Fresh Basil" 
@@ -138,11 +137,11 @@ export function IngredientFormDialog({
                   name="unit"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Unit *</FormLabel>
+                      <FormLabel>{t('ingredients.unit')} *</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger className="transition-all duration-200 focus:ring-2">
-                            <SelectValue placeholder="Select unit type" />
+                            <SelectValue placeholder={t('ui.selectUnitType')} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="max-h-60">
@@ -165,7 +164,7 @@ export function IngredientFormDialog({
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
                         <DollarSign className="h-4 w-4" />
-                        Price per {currentUnit || 'unit'} (€)
+                        {t('ui.pricePerUnit', { unit: currentUnit || t('ui.perUnit') })}
                       </FormLabel>
                       <FormControl>
                         <Input 
@@ -189,13 +188,13 @@ export function IngredientFormDialog({
             {currentPrice > 0 && currentUnit && (
               <div className="bg-primary/5 border border-primary/20 rounded-md p-4">
                 <div className="flex justify-between items-center text-sm">
-                  <span>Price Preview:</span>
+                  <span>{t('ui.pricePreview')}</span>
                   <Badge variant="default" className="text-base font-mono">
-                    €{Number(currentPrice).toFixed(2)} per {currentUnit}
+                    €{Number(currentPrice).toFixed(2)} {t('ingredients.perUnit', { unit: currentUnit })}
                   </Badge>
                 </div>
                 <div className="text-xs text-muted-foreground mt-2">
-                  💡 This will be used to calculate meal costs automatically
+                  {t('ui.thisWillBeUsedToCalculate')}
                 </div>
               </div>
             )}
@@ -207,7 +206,7 @@ export function IngredientFormDialog({
                 onClick={() => onOpenChange(false)}
                 disabled={isSubmitting}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button 
                 type="submit" 
@@ -217,12 +216,12 @@ export function IngredientFormDialog({
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {defaultValues ? 'Updating...' : 'Creating...'}
+                    {defaultValues ? t('ui.updating') : t('ui.creating')}
                   </>
                 ) : (
                   <>
                     <Plus className="h-4 w-4 mr-2" />
-                    {defaultValues ? 'Update Ingredient' : 'Create Ingredient'}
+                    {defaultValues ? t('ingredients.editIngredient') : t('ingredients.addIngredient')}
                   </>
                 )}
               </Button>

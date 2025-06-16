@@ -24,6 +24,7 @@ import {
 import { Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { PacketFormValues, packetSchema } from '@/app/lib/validation-schemas';
 import { Packet } from '@/app/lib/pricing';
+import { useTranslations } from '@/app/providers/language-provider';
 
 interface PacketFormDialogProps {
   open: boolean;
@@ -44,6 +45,7 @@ export function PacketFormDialog({
   title,
   onDelete
 }: PacketFormDialogProps) {
+  const t = useTranslations();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const form = useForm<PacketFormValues>({
@@ -140,7 +142,7 @@ export function PacketFormDialog({
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Name</FormLabel>
+                  <FormLabel>{t('ui.name')}</FormLabel>
                   <FormControl>
                     <Input 
                       placeholder="Wedding Package" 
@@ -161,7 +163,7 @@ export function PacketFormDialog({
                   name="description"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Description</FormLabel>
+                      <FormLabel>{t('ui.description')}</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="Complete wedding catering package including appetizers, main course, and dessert" 
@@ -178,13 +180,13 @@ export function PacketFormDialog({
                   name="price_net_override"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Price Override (€) - Optional</FormLabel>
+                      <FormLabel>{t('ui.priceOverride')}</FormLabel>
                       <FormControl>
                         <Input 
                           type="number"
                           step="0.01"
                           min="0"
-                          placeholder="Leave empty to calculate from meals"
+                          placeholder={t('ui.leaveEmptyToCalculate', { type: t('meals.title').toLowerCase() })}
                           className="[&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                           {...field}
                           value={field.value === null ? '' : field.value}
@@ -202,9 +204,7 @@ export function PacketFormDialog({
             )}
             
             {!defaultValues && (
-              <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                💡 <strong>Tip:</strong> After creating your packet, use the &quot;Edit&quot; button to add meals and set custom prices.
-              </div>
+              <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md" dangerouslySetInnerHTML={{ __html: t('ui.tipAfterCreatingPacket') }} />
             )}
             <DialogFooter className="flex justify-between">
               {/* Show delete button only when editing and onDelete is provided */}

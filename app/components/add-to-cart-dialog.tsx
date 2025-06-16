@@ -17,6 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { ShoppingCart, Minus, Plus, Package, Utensils, Wrench } from 'lucide-react';
 import { calculateMealPrice } from '@/app/lib/price-utils';
 import { toast } from 'sonner';
+import { useTranslations } from '@/app/providers/language-provider';
 
 interface AddToCartDialogProps {
   open: boolean;
@@ -33,6 +34,7 @@ export function AddToCartDialog({
   itemType,
   onAddToCart 
 }: AddToCartDialogProps) {
+  const t = useTranslations();
   const [quantity, setQuantity] = useState(1);
   const [markupPct, setMarkupPct] = useState<number | ''>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,7 +81,7 @@ export function AddToCartDialog({
 
   const handleAddToCart = async () => {
     if (markupPct === '') {
-      toast.error('Markup percentage is required');
+      toast.error(t('cart.markupRequired'));
       return;
     }
 
@@ -87,15 +89,15 @@ export function AddToCartDialog({
     try {
       await onAddToCart(item.id, itemType, quantity, typeof markupPct === 'number' ? markupPct : 0);
       
-      toast.success('Added to cart', {
-        description: `${quantity}x ${item.name} added to your cart`
+      toast.success(t('ui.addedToCartSuccess'), {
+        description: t('ui.addedToCartDescription', { quantity, name: item.name })
       });
       
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to add to cart:', error);
-      toast.error('Failed to add to cart', {
-        description: 'Please try again'
+      toast.error(t('ui.failedToAddToCart'), {
+        description: t('ui.pleaseRetry')
       });
     } finally {
       setIsSubmitting(false);
@@ -108,7 +110,7 @@ export function AddToCartDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ShoppingCart className="h-5 w-5" />
-            Add to Cart
+            {t('cart.addToCart')}
           </DialogTitle>
         </DialogHeader>
         
@@ -130,14 +132,14 @@ export function AddToCartDialog({
                 <p className="text-sm text-muted-foreground mt-1">{item.description}</p>
               )}
               <Badge variant="outline" className="mt-2">
-                {itemType === 'meal' ? 'Meal' : itemType === 'service' ? 'Service' : 'Packet'}
+                {itemType === 'meal' ? t('ui.mealType') : itemType === 'service' ? t('ui.serviceType') : t('ui.packetType')}
               </Badge>
             </div>
           </div>
 
           {/* Quantity Input */}
           <div className="space-y-2">
-            <Label htmlFor="quantity">Quantity</Label>
+            <Label htmlFor="quantity">{t('cart.quantity')}</Label>
             <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
@@ -169,49 +171,48 @@ export function AddToCartDialog({
 
           {/* Markup Percentage */}
           <div className="space-y-2">
-            <Label htmlFor="markup">Markup Percentage (%) *</Label>
+            <Label htmlFor="markup">{t('cart.markupPercentage')} *</Label>
             <Input
               id="markup"
               type="number"
               value={markupPct}
               onChange={(e) => handleMarkupChange(e.target.value)}
-              placeholder="Enter markup percentage"
+              placeholder={t('ui.enterMarkupPercentage')}
               min="0"
               max="1000"
               step="0.1"
               required
             />
             <p className="text-xs text-muted-foreground">
-              Required field. Enter 0 for no markup.
+              {t('ui.requiredFieldEnterZero')}
             </p>
           </div>
 
           {/* Price Preview */}
           <Card className="bg-gradient-to-r from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20">
             <CardContent className="p-4">
-              <h4 className="font-medium mb-3">Price Calculation</h4>
+              <h4 className="font-medium mb-3">{t('cart.priceCalculation')}</h4>
               {!hasValidPrice && itemType === 'meal' && (
                 <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-md mb-3">
                   <p className="text-sm text-yellow-800">
-                    ⚠️ This meal has no price set and no ingredients to calculate from. 
-                    Please add ingredients or set a price override before adding to cart.
+                    {t('ui.noValidPriceWarning')}
                   </p>
                 </div>
               )}
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>Base price per unit:</span>
-                  <span>{hasValidPrice ? `€${basePrice.toFixed(2)}` : 'N/A'}</span>
+                  <span>{t('ui.basePricePerUnitColon')}</span>
+                  <span>{hasValidPrice ? `€${basePrice.toFixed(2)}` : t('ui.notAvailable')}</span>
                 </div>
                 {typeof markupPct === 'number' && hasValidPrice && (
                   <>
                     <div className="flex justify-between">
-                      <span>With markup ({markupPct}%):</span>
+                      <span>{t('ui.withMarkupPercent', { markup: markupPct })}:</span>
                       <span>€{pricePerUnit.toFixed(2)}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between font-semibold">
-                      <span>Total ({quantity}x):</span>
+                      <span>{t('ui.totalQuantity', { quantity })}:</span>
                       <span className="text-green-600">€{totalPrice.toFixed(2)}</span>
                     </div>
                   </>
@@ -227,14 +228,14 @@ export function AddToCartDialog({
             onClick={() => onOpenChange(false)}
             disabled={isSubmitting}
           >
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             onClick={handleAddToCart}
             disabled={isSubmitting || markupPct === '' || !hasValidPrice}
             className="min-w-[100px]"
           >
-            {isSubmitting ? 'Adding...' : 'Add to Cart'}
+            {isSubmitting ? t('cart.adding') : t('cart.addToCart')}
           </Button>
         </DialogFooter>
       </DialogContent>

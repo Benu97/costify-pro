@@ -13,6 +13,8 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { useCart } from '@/app/providers/cart-provider';
 import { searchItems } from '@/app/actions/cart';
 import LogoutButton from '@/app/components/LogoutButton';
+import { LanguageSelector } from '@/app/components/language-selector';
+import { useTranslations } from '@/app/providers/language-provider';
 import CartSidebar, { CartSummaryFixed } from '@/app/components/cart-sidebar';
 import { AddToCartDialog } from '@/app/components/add-to-cart-dialog';
 import { IngredientEditDialog } from '@/app/dashboard/ingredients/components/ingredient-edit-dialog';
@@ -86,6 +88,7 @@ interface NewDashboardProps {
 }
 
 export default function NewDashboard({ userEmail, ingredients, meals, packets, services }: NewDashboardProps) {
+  const t = useTranslations();
   const [activeTab, setActiveTab] = useState('ingredients');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -690,17 +693,18 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                   <h1 className="text-xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
                     Costify Pro
                   </h1>
-                  <p className="text-xs text-muted-foreground">Professional Food Costing</p>
+                  <p className="text-xs text-muted-foreground">{t('ui.professionalFoodCosting')}</p>
                 </div>
               </div>
               
-              {/* Right edge - User email and logout button */}
+              {/* Right edge - User email, language selector and logout button */}
               <div className="flex items-center space-x-4">
                 <div className="hidden md:flex items-center space-x-2">
                   <User className="h-4 w-4 text-muted-foreground" />
                   <span className="text-xs font-medium">{userEmail}</span>
                 </div>
                 
+                <LanguageSelector />
                 <LogoutButton />
               </div>
             </div>
@@ -724,28 +728,28 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                     className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border-2 border-muted/50 bg-card hover:border-green-500 hover:shadow-lg hover:shadow-green-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-green-200/90 data-[state=active]:border-green-600 data-[state=active]:shadow-xl data-[state=active]:shadow-green-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
                   >
                     <Wheat className="h-10 w-10 text-green-600" />
-                    <span className="text-lg font-medium tab-button-text">Ingredients</span>
+                    <span className="text-lg font-medium tab-button-text">{t('navigation.ingredients')}</span>
                   </TabsTrigger>
                   <TabsTrigger 
                     value="meals" 
                     className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border-2 border-muted/50 bg-card hover:border-blue-500 hover:shadow-lg hover:shadow-blue-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-blue-200/90 data-[state=active]:border-blue-600 data-[state=active]:shadow-xl data-[state=active]:shadow-blue-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
                   >
                     <Utensils className="h-10 w-10 text-blue-600" />
-                    <span className="text-lg font-medium tab-button-text">Meals</span>
+                    <span className="text-lg font-medium tab-button-text">{t('navigation.meals')}</span>
                   </TabsTrigger>
                   <TabsTrigger 
                     value="packets" 
                     className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border-2 border-muted/50 bg-card hover:border-purple-500 hover:shadow-lg hover:shadow-purple-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-purple-200/90 data-[state=active]:border-purple-600 data-[state=active]:shadow-xl data-[state=active]:shadow-purple-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
                   >
                     <Package className="h-10 w-10 text-purple-600" />
-                    <span className="text-lg font-medium tab-button-text">Packets</span>
+                    <span className="text-lg font-medium tab-button-text">{t('navigation.packets')}</span>
                   </TabsTrigger>
                   <TabsTrigger 
                     value="services" 
                     className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border-2 border-muted/50 bg-card hover:border-orange-500 hover:shadow-lg hover:shadow-orange-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-orange-200/90 data-[state=active]:border-orange-600 data-[state=active]:shadow-xl data-[state=active]:shadow-orange-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
                   >
                     <Wrench className="h-10 w-10 text-orange-600" />
-                    <span className="text-lg font-medium tab-button-text">Services</span>
+                    <span className="text-lg font-medium tab-button-text">{t('navigation.services')}</span>
                   </TabsTrigger>
                 </TabsList>
 
@@ -754,7 +758,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                   <div className="relative w-full">
                     <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input
-                      placeholder="Search ingredients, meals, packets, and services..."
+                      placeholder={t('dashboard.searchPlaceholder')}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full h-14 pl-12 pr-4 text-base bg-background border-2 border-muted rounded-xl shadow-sm hover:border-primary/30 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
@@ -765,14 +769,14 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                 {/* Ingredients Tab */}
                 <TabsContent value="ingredients" className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Ingredients</h2>
+                    <h2 className="text-xl font-semibold">{t('ingredients.title')}</h2>
                     <Button 
                       size="sm" 
                       className="flex items-center space-x-2"
                       onClick={handleAddIngredient}
                     >
                       <Plus className="h-4 w-4" />
-                      <span>Add Ingredient</span>
+                      <span>{t('ingredients.addIngredient')}</span>
                     </Button>
                   </div>
                   
@@ -813,7 +817,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>Edit ingredient</p>
+                                      <p>{t('ingredients.editIngredient')}</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
@@ -825,7 +829,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                                   €{ingredient.price_net.toFixed(2)}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  per {ingredient.unit}
+                                  {t('ingredients.perUnit', { unit: ingredient.unit })}
                                 </div>
                               </div>
                             </CardContent>
@@ -839,14 +843,14 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                 {/* Meals Tab - Changed to 4-column grid */}
                 <TabsContent value="meals" className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Meals</h2>
+                    <h2 className="text-xl font-semibold">{t('meals.title')}</h2>
                     <Button 
                       size="sm" 
                       className="flex items-center space-x-2"
                       onClick={handleAddMeal}
                     >
                       <Plus className="h-4 w-4" />
-                      <span>Create Meal</span>
+                      <span>{t('meals.createMeal')}</span>
                     </Button>
                   </div>
                   
@@ -887,7 +891,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>Add to cart</p>
+                                      <p>{t('ui.addToCartTooltip')}</p>
                                     </TooltipContent>
                                   </Tooltip>
                                   <Tooltip>
@@ -905,7 +909,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>Edit meal</p>
+                                      <p>{t('meals.editMeal')}</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
@@ -917,7 +921,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                                   {getMealPriceDisplay(meal, meal.ingredients)}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  per meal
+                                  {t('ui.perMeal')}
                                 </div>
                               </div>
                             </CardContent>
@@ -931,14 +935,14 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                 {/* Packets Tab - Changed to 4-column grid */}
                 <TabsContent value="packets" className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Packets</h2>
+                    <h2 className="text-xl font-semibold">{t('packets.title')}</h2>
                     <Button 
                       size="sm" 
                       className="flex items-center space-x-2"
                       onClick={handleAddPacket}
                     >
                       <Plus className="h-4 w-4" />
-                      <span>Create Packet</span>
+                      <span>{t('packets.createPacket')}</span>
                     </Button>
                   </div>
                   
@@ -979,7 +983,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>Add to cart</p>
+                                      <p>{t('ui.addToCartTooltip')}</p>
                                     </TooltipContent>
                                   </Tooltip>
                                   <Tooltip>
@@ -997,7 +1001,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                                       </Button>
                                     </TooltipTrigger>
                                     <TooltipContent>
-                                      <p>Edit packet</p>
+                                      <p>{t('packets.editPacket')}</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </div>
@@ -1009,7 +1013,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                                   {getPacketPriceDisplay(packet, packet.meals)}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  per packet
+                                  {t('ui.perPacket')}
                                 </div>
                               </div>
                             </CardContent>
@@ -1023,14 +1027,14 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                 {/* Services Tab */}
                 <TabsContent value="services" className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold">Services</h2>
+                    <h2 className="text-xl font-semibold">{t('services.title')}</h2>
                     <Button 
                       size="sm" 
                       className="flex items-center space-x-2"
                       onClick={handleAddService}
                     >
                       <Plus className="h-4 w-4" />
-                      <span>Add Service</span>
+                      <span>{t('services.addService')}</span>
                     </Button>
                   </div>
                   
@@ -1075,7 +1079,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                                        </Button>
                                      </TooltipTrigger>
                                      <TooltipContent>
-                                       <p>Add to cart</p>
+                                       <p>{t('ui.addToCartTooltip')}</p>
                                      </TooltipContent>
                                    </Tooltip>
                                    <Tooltip>
@@ -1090,7 +1094,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                                        </Button>
                                      </TooltipTrigger>
                                      <TooltipContent>
-                                       <p>Edit service</p>
+                                       <p>{t('services.editService')}</p>
                                      </TooltipContent>
                                    </Tooltip>
                                  </div>
@@ -1102,7 +1106,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                                   €{service.price_net.toFixed(2)}
                                 </div>
                                 <div className="text-xs text-muted-foreground">
-                                  per service
+                                  {t('ui.perService')}
                                 </div>
                               </div>
                             </CardContent>
