@@ -21,15 +21,18 @@ import { MealFormDialog } from '@/app/dashboard/meals/components/meal-form-dialo
 import { MealDetailsDialog } from '@/app/dashboard/meals/components/meal-details-dialog';
 import { PacketFormDialog } from '@/app/dashboard/packets/components/packet-form-dialog';
 import { PacketDetailsDialog } from '@/app/dashboard/packets/components/packet-details-dialog';
+import { ServiceFormDialog } from '@/app/dashboard/services/components/service-form-dialog';
 import { createIngredient, deleteIngredient, updateIngredient } from '@/app/actions/ingredients';
 import { createMeal, deleteMeal, updateMeal, getMealWithIngredients } from '@/app/actions/meals';
 import { createPacket, deletePacket, updatePacket, getPacketWithMeals } from '@/app/actions/packets';
-import { IngredientFormValues, MealFormValues, PacketFormValues } from '@/app/lib/validation-schemas';
+import { createService, deleteService, updateService } from '@/app/actions/services';
+import { IngredientFormValues, MealFormValues, PacketFormValues, ServiceFormValues } from '@/app/lib/validation-schemas';
 import { 
   Package, 
   ShoppingCart, 
   Utensils, 
   Wheat,
+  Wrench,
   TrendingUp,
   Search,
   Plus,
@@ -44,18 +47,7 @@ import {
   Edit
 } from 'lucide-react';
 import { getMealPriceDisplay, getPacketPriceDisplay } from '@/app/lib/price-utils';
-import { IngredientWithQuantity } from '@/app/lib/pricing';
-
-interface Ingredient {
-  id: string;
-  name: string;
-  unit: string;
-  price_net: number;
-  created_at: string;
-  updated_at: string;
-  owner_id: string;
-  category?: string;
-}
+import { IngredientWithQuantity, Service, Ingredient } from '@/app/lib/pricing';
 
 interface Meal {
   id: string;
@@ -90,9 +82,10 @@ interface NewDashboardProps {
   ingredients: Ingredient[];
   meals: MealWithIngredients[];
   packets: PacketWithMeals[];
+  services: Service[];
 }
 
-export default function NewDashboard({ userEmail, ingredients, meals, packets }: NewDashboardProps) {
+export default function NewDashboard({ userEmail, ingredients, meals, packets, services }: NewDashboardProps) {
   const [activeTab, setActiveTab] = useState('ingredients');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
@@ -123,15 +116,23 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
   const [currentPacketId, setCurrentPacketId] = useState<string | null>(null);
   const [isPacketSubmitting, setIsPacketSubmitting] = useState(false);
 
+  // Service management state
+  const [localServices, setLocalServices] = useState<Service[]>(services || []);
+  const [isAddServiceDialogOpen, setIsAddServiceDialogOpen] = useState(false);
+  const [isEditServiceDialogOpen, setIsEditServiceDialogOpen] = useState(false);
+  const [currentService, setCurrentService] = useState<Service | null>(null);
+  const [isServiceSubmitting, setIsServiceSubmitting] = useState(false);
+
   // Add to cart state
   const [isAddToCartDialogOpen, setIsAddToCartDialogOpen] = useState(false);
-  const [cartItemToAdd, setCartItemToAdd] = useState<{ item: MealWithIngredients | PacketWithMeals; type: 'meal' | 'packet' } | null>(null);
+  const [cartItemToAdd, setCartItemToAdd] = useState<{ item: MealWithIngredients | PacketWithMeals | Service; type: 'meal' | 'packet' | 'service' } | null>(null);
 
   // Safety check to prevent undefined errors
   const safeCartItems = cartItems || [];
   const safeIngredients = localIngredients || [];
   const safeMeals = localMeals || [];
   const safePackets = localPackets || [];
+  const safeServices = localServices || [];
 
   const filteredIngredients = safeIngredients.filter(item => 
     item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -148,20 +149,26 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
     (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const filteredServices = safeServices.filter(item => 
+    item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.description && item.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   const stats = {
-    totalItems: safeIngredients.length + safeMeals.length + safePackets.length,
+    totalItems: safeIngredients.length + safeMeals.length + safePackets.length + safeServices.length,
     ingredients: safeIngredients.length,
     meals: safeMeals.length,
     packets: safePackets.length,
+    services: safeServices.length,
     cartItems: safeCartItems.reduce((sum, item) => sum + item.quantity, 0)
   };
 
-  const handleAddToCart = (item: MealWithIngredients | PacketWithMeals, type: 'meal' | 'packet') => {
+  const handleAddToCart = (item: MealWithIngredients | PacketWithMeals | Service, type: 'meal' | 'packet' | 'service') => {
     setCartItemToAdd({ item, type });
     setIsAddToCartDialogOpen(true);
   };
 
-  const handleAddToCartConfirm = async (itemId: string, itemType: 'meal' | 'packet', quantity: number, markupPct: number) => {
+  const handleAddToCartConfirm = async (itemId: string, itemType: 'meal' | 'packet' | 'service', quantity: number, markupPct: number) => {
     try {
       await addItem(itemType, itemId, quantity, markupPct);
       setIsAddToCartDialogOpen(false);
@@ -445,6 +452,91 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
     }
   };
 
+  // Service management handlers
+  const handleAddService = () => {
+    setIsAddServiceDialogOpen(true);
+  };
+
+  const handleEditService = (service: Service) => {
+    setCurrentService(service);
+    setIsEditServiceDialogOpen(true);
+  };
+
+  const handleCreateService = async (data: ServiceFormValues) => {
+    setIsServiceSubmitting(true);
+    try {
+      const result = await createService(data);
+      if (result.success && result.data) {
+        setLocalServices([...localServices, result.data as Service]);
+        setIsAddServiceDialogOpen(false);
+        toast.success('Service created successfully', {
+          description: `${data.name} has been added to your services`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create service:', error);
+      toast.error('Failed to create service', {
+        description: 'Please try again or check your input'
+      });
+    } finally {
+      setIsServiceSubmitting(false);
+    }
+  };
+
+  const handleUpdateService = async (data: ServiceFormValues) => {
+    if (!data.id) return;
+    
+    setIsServiceSubmitting(true);
+    try {
+      const result = await updateService(data);
+      if (result.success && result.data) {
+        setLocalServices(
+          localServices.map((item) => 
+            item.id === data.id ? result.data as Service : item
+          )
+        );
+        setIsEditServiceDialogOpen(false);
+        setCurrentService(null);
+        toast.success('Service updated successfully', {
+          description: `${data.name} has been updated`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to update service:', error);
+      toast.error('Failed to update service', {
+        description: 'Please try again'
+      });
+    } finally {
+      setIsServiceSubmitting(false);
+    }
+  };
+
+  const handleDeleteService = async () => {
+    if (!currentService) return;
+    
+    setIsServiceSubmitting(true);
+    try {
+      const result = await deleteService(currentService.id);
+      if (result.success) {
+        setLocalServices(
+          localServices.filter((item) => item.id !== currentService.id)
+        );
+        setIsEditServiceDialogOpen(false);
+        setCurrentService(null);
+        toast.success('Service deleted successfully', {
+          description: `${currentService.name} has been removed from your services`
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete service:', error);
+      toast.error('Failed to delete service', {
+        description: 'Please try again'
+      });
+    } finally {
+      setIsServiceSubmitting(false);
+    }
+  };
+
   // Add refresh tracking to prevent duplicate updates
   const refreshTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
@@ -626,7 +718,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
             >
               {/* Tabs - Updated with 3D effects */}
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-3 mb-6 gap-3 bg-transparent p-0 h-auto">
+                <TabsList className="grid w-full grid-cols-4 mb-6 gap-3 bg-transparent p-0 h-auto">
                   <TabsTrigger 
                     value="ingredients" 
                     className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border border-muted/50 bg-card hover:border-green-500 hover:shadow-lg hover:shadow-green-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-green-200/90 data-[state=active]:border-green-600 data-[state=active]:shadow-xl data-[state=active]:shadow-green-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
@@ -648,6 +740,13 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                     <Package className="h-10 w-10 text-purple-600" />
                     <span className="text-lg font-medium tab-button-text">Packets</span>
                   </TabsTrigger>
+                  <TabsTrigger 
+                    value="services" 
+                    className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border border-muted/50 bg-card hover:border-orange-500 hover:shadow-lg hover:shadow-orange-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-orange-200/90 data-[state=active]:border-orange-600 data-[state=active]:shadow-xl data-[state=active]:shadow-orange-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
+                  >
+                    <Wrench className="h-10 w-10 text-orange-600" />
+                    <span className="text-lg font-medium tab-button-text">Services</span>
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* Search Bar - Moved between tabs and content */}
@@ -655,7 +754,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                   <div className="relative w-full">
                     <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                     <Input
-                      placeholder="Search ingredients, meals, and packets..."
+                      placeholder="Search ingredients, meals, packets, and services..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full h-14 pl-12 pr-4 text-base bg-background border-2 border-muted rounded-xl shadow-sm hover:border-primary/30 focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200"
@@ -697,7 +796,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                           }}
                           className="group"
                         >
-                          <Card className="h-full transition-all duration-200 border-green-300/80 bg-card/50 backdrop-blur-sm hover:border-green-600 hover:shadow-lg hover:shadow-green-500/30 hover:bg-card/80">
+                                                      <Card className="h-full transition-all duration-200 border-2 border-green-300/80 bg-card/50 backdrop-blur-sm hover:border-green-600 hover:shadow-lg hover:shadow-green-500/30 hover:bg-card/80">
                             <CardHeader>
                               <div className="flex items-start justify-between">
                                 <CardTitle className="text-base">{ingredient.name}</CardTitle>
@@ -771,7 +870,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                           }}
                           className="group"
                         >
-                          <Card className="h-full transition-all duration-200 border-blue-300/80 bg-card/50 backdrop-blur-sm hover:border-blue-600 hover:shadow-lg hover:shadow-blue-500/30 hover:bg-card/80">
+                                                      <Card className="h-full transition-all duration-200 border-2 border-blue-300/80 bg-card/50 backdrop-blur-sm hover:border-blue-600 hover:shadow-lg hover:shadow-blue-500/30 hover:bg-card/80">
                             <CardHeader>
                               <div className="flex items-start justify-between">
                                 <CardTitle className="text-base">{meal.name}</CardTitle>
@@ -863,7 +962,7 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                           }}
                           className="group"
                         >
-                          <Card className="h-full transition-all duration-200 border-purple-300/80 bg-card/50 backdrop-blur-sm hover:border-purple-600 hover:shadow-lg hover:shadow-purple-500/30 hover:bg-card/80">
+                                                      <Card className="h-full transition-all duration-200 border-2 border-purple-300/80 bg-card/50 backdrop-blur-sm hover:border-purple-600 hover:shadow-lg hover:shadow-purple-500/30 hover:bg-card/80">
                             <CardHeader>
                               <div className="flex items-start justify-between">
                                 <CardTitle className="text-base">{packet.name}</CardTitle>
@@ -911,6 +1010,99 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
                                 </div>
                                 <div className="text-xs text-muted-foreground">
                                   per packet
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      ))}
+                    </motion.div>
+                  </AnimatePresence>
+                </TabsContent>
+
+                {/* Services Tab */}
+                <TabsContent value="services" className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-xl font-semibold">Services</h2>
+                    <Button 
+                      size="sm" 
+                      className="flex items-center space-x-2"
+                      onClick={handleAddService}
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Add Service</span>
+                    </Button>
+                  </div>
+                  
+                  <AnimatePresence>
+                    <motion.div 
+                      className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ staggerChildren: 0.1 }}
+                    >
+                      {filteredServices.map((service, index) => (
+                        <motion.div
+                          key={service.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -20 }}
+                          transition={{ delay: index * 0.05 }}
+                        >
+                                                     <Card className="h-full transition-all duration-200 border-2 border-orange-300/80 bg-card/50 backdrop-blur-sm hover:border-orange-600 hover:shadow-lg hover:shadow-orange-500/30 hover:bg-card/80">
+                             <CardHeader className="pb-3">
+                               <div className="flex items-start justify-between">
+                                 <div className="flex-1">
+                                   <CardTitle className="text-base font-semibold mb-1 line-clamp-2">
+                                     {service.name}
+                                   </CardTitle>
+                                   {service.description && (
+                                     <CardDescription className="text-xs line-clamp-2">
+                                       {service.description}
+                                     </CardDescription>
+                                   )}
+                                 </div>
+                                 <div className="flex items-center space-x-1 ml-2 flex-shrink-0">
+                                   <Tooltip>
+                                     <TooltipTrigger asChild>
+                                       <Button 
+                                         variant="ghost" 
+                                         size="sm" 
+                                         className="h-9 w-9 p-0 hover:bg-orange-100 hover:text-orange-700"
+                                         onClick={() => handleAddToCart(service, 'service')}
+                                       >
+                                         <ShoppingCart className="h-5 w-5" />
+                                       </Button>
+                                     </TooltipTrigger>
+                                     <TooltipContent>
+                                       <p>Add to cart</p>
+                                     </TooltipContent>
+                                   </Tooltip>
+                                   <Tooltip>
+                                     <TooltipTrigger asChild>
+                                       <Button 
+                                         variant="ghost" 
+                                         size="sm" 
+                                         className="h-9 w-9 p-0 hover:bg-orange-100 hover:text-orange-700"
+                                         onClick={() => handleEditService(service)}
+                                       >
+                                         <Edit className="h-5 w-5" />
+                                       </Button>
+                                     </TooltipTrigger>
+                                     <TooltipContent>
+                                       <p>Edit service</p>
+                                     </TooltipContent>
+                                   </Tooltip>
+                                 </div>
+                               </div>
+                             </CardHeader>
+                            <CardContent className="pt-0">
+                              <div className="flex items-center justify-between">
+                                <div className="text-lg font-semibold text-orange-600">
+                                  €{service.price_net.toFixed(2)}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  per service
                                 </div>
                               </div>
                             </CardContent>
@@ -1061,6 +1253,27 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets }:
             }
           }}
         />
+
+        {/* Service Management Dialogs */}
+        <ServiceFormDialog
+          open={isAddServiceDialogOpen}
+          onOpenChange={setIsAddServiceDialogOpen}
+          onSubmit={handleCreateService}
+          isSubmitting={isServiceSubmitting}
+          title="Add New Service"
+        />
+
+        {currentService && (
+          <ServiceFormDialog
+            open={isEditServiceDialogOpen}
+            onOpenChange={setIsEditServiceDialogOpen}
+            onSubmit={handleUpdateService}
+            defaultValues={currentService}
+            isSubmitting={isServiceSubmitting}
+            title="Edit Service"
+            onDelete={handleDeleteService}
+          />
+        )}
         
         {/* Fixed Cart Summary at Bottom Right */}
         <CartSummaryFixed />

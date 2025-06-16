@@ -67,6 +67,7 @@ export type Database = {
       }
       ingredients: {
         Row: {
+          category: string | null
           created_at: string
           id: string
           name: string
@@ -76,6 +77,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category?: string | null
           created_at?: string
           id?: string
           name: string
@@ -85,6 +87,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -252,6 +255,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      services: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          owner_id: string
+          price_net: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          owner_id: string
+          price_net: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          owner_id?: string
+          price_net?: number
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       users: {
         Row: {

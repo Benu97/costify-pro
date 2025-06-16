@@ -5,6 +5,7 @@ import NewDashboard from './components/new-dashboard';
 import { getIngredients } from './actions/ingredients';
 import { getMealsWithIngredients } from './actions/meals';
 import { getPacketsWithMeals } from './actions/packets';
+import { getServices } from './actions/services';
 import { CartProvider } from './providers/cart-provider';
 
 export const dynamic = 'force-dynamic';
@@ -28,10 +29,11 @@ export default async function HomePage() {
 
 async function DashboardData({ userEmail }: { userEmail: string }) {
   // Fetch all data for the dashboard
-  const [ingredients, meals, packets] = await Promise.all([
+  const [ingredients, meals, packets, services] = await Promise.all([
     getIngredients(),
     getMealsWithIngredients(),
-    getPacketsWithMeals()
+    getPacketsWithMeals(),
+    getServices()
   ]);
 
   return (
@@ -40,6 +42,7 @@ async function DashboardData({ userEmail }: { userEmail: string }) {
       ingredients={ingredients}
       meals={meals}
       packets={packets}
+      services={services}
     />
   );
 }

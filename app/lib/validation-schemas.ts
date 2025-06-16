@@ -11,6 +11,16 @@ export const ingredientSchema = z.object({
 
 export type IngredientFormValues = z.infer<typeof ingredientSchema>;
 
+// Service validation schema
+export const serviceSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, 'Name is required'),
+  price_net: z.coerce.number().min(0, 'Price must be a positive number'),
+  description: z.string().optional(),
+});
+
+export type ServiceFormValues = z.infer<typeof serviceSchema>;
+
 // Meal validation schema
 export const mealSchema = z.object({
   id: z.string().optional(),
