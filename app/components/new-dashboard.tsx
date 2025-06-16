@@ -721,28 +721,28 @@ export default function NewDashboard({ userEmail, ingredients, meals, packets, s
                 <TabsList className="grid w-full grid-cols-4 mb-6 gap-3 bg-transparent p-0 h-auto">
                   <TabsTrigger 
                     value="ingredients" 
-                    className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border border-muted/50 bg-card hover:border-green-500 hover:shadow-lg hover:shadow-green-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-green-200/90 data-[state=active]:border-green-600 data-[state=active]:shadow-xl data-[state=active]:shadow-green-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
+                    className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border-2 border-muted/50 bg-card hover:border-green-500 hover:shadow-lg hover:shadow-green-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-green-200/90 data-[state=active]:border-green-600 data-[state=active]:shadow-xl data-[state=active]:shadow-green-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
                   >
                     <Wheat className="h-10 w-10 text-green-600" />
                     <span className="text-lg font-medium tab-button-text">Ingredients</span>
                   </TabsTrigger>
                   <TabsTrigger 
                     value="meals" 
-                    className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border border-muted/50 bg-card hover:border-blue-500 hover:shadow-lg hover:shadow-blue-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-blue-200/90 data-[state=active]:border-blue-600 data-[state=active]:shadow-xl data-[state=active]:shadow-blue-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
+                    className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border-2 border-muted/50 bg-card hover:border-blue-500 hover:shadow-lg hover:shadow-blue-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-blue-200/90 data-[state=active]:border-blue-600 data-[state=active]:shadow-xl data-[state=active]:shadow-blue-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
                   >
                     <Utensils className="h-10 w-10 text-blue-600" />
                     <span className="text-lg font-medium tab-button-text">Meals</span>
                   </TabsTrigger>
                   <TabsTrigger 
                     value="packets" 
-                    className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border border-muted/50 bg-card hover:border-purple-500 hover:shadow-lg hover:shadow-purple-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-purple-200/90 data-[state=active]:border-purple-600 data-[state=active]:shadow-xl data-[state=active]:shadow-purple-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
+                    className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border-2 border-muted/50 bg-card hover:border-purple-500 hover:shadow-lg hover:shadow-purple-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-purple-200/90 data-[state=active]:border-purple-600 data-[state=active]:shadow-xl data-[state=active]:shadow-purple-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
                   >
                     <Package className="h-10 w-10 text-purple-600" />
                     <span className="text-lg font-medium tab-button-text">Packets</span>
                   </TabsTrigger>
                   <TabsTrigger 
                     value="services" 
-                    className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border border-muted/50 bg-card hover:border-orange-500 hover:shadow-lg hover:shadow-orange-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-orange-200/90 data-[state=active]:border-orange-600 data-[state=active]:shadow-xl data-[state=active]:shadow-orange-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
+                    className="flex items-center justify-center space-x-3 h-16 w-full max-w-xs mx-auto rounded-lg border-2 border-muted/50 bg-card hover:border-orange-500 hover:shadow-lg hover:shadow-orange-400/30 hover:scale-105 hover:-translate-y-1 data-[state=active]:bg-orange-200/90 data-[state=active]:border-orange-600 data-[state=active]:shadow-xl data-[state=active]:shadow-orange-500/40 data-[state=active]:scale-105 data-[state=active]:-translate-y-2 transition-all duration-300"
                   >
                     <Wrench className="h-10 w-10 text-orange-600" />
                     <span className="text-lg font-medium tab-button-text">Services</span>
